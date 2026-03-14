@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 )
 
 const ipInfoQueryURL = "https://ipinfo.czl.net/api/query"
+const ipTimezoneQueryURLTemplate = "http://ip-api.com/json/%s?fields=status,message,countryCode,timezone"
 
 // ipEchoURLs 用于通过代理获取出口 IP 的服务列表，按优先级排列
 var ipEchoURLs = []string{
@@ -107,7 +109,35 @@ func FetchIPInfo(
 		return nil, fmt.Errorf("IP 信息查询 HTTP %d: %s", resp.StatusCode, bodySnippet(body, 500))
 	}
 
-	return parseIPInfoPayload(body)
+	data, err := parseIPInfoPayload(body)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.TrimSpace(mapStringValue(data, "timezone")) == "" {
+		timezone, countryCode, tzErr := fetchTimezoneByIP(exitIP, directClient)
+		if tzErr != nil {
+			log.Debug("timezone fallback lookup failed",
+				logger.F("ip", exitIP),
+				logger.F("error", tzErr.Error()),
+			)
+		} else if timezone != "" {
+			data["timezone"] = timezone
+			if strings.TrimSpace(mapStringValue(data, "country_code")) == "" && countryCode != "" {
+				data["country_code"] = countryCode
+			}
+			if strings.TrimSpace(mapStringValue(data, "countryCode")) == "" && countryCode != "" {
+				data["countryCode"] = countryCode
+			}
+			log.Debug("timezone filled by ip fallback",
+				logger.F("ip", exitIP),
+				logger.F("timezone", timezone),
+				logger.F("country_code", countryCode),
+			)
+		}
+	}
+
+	return data, nil
 }
 
 func bodySnippet(body []byte, max int) string {
@@ -253,4 +283,73 @@ func normalizeIPInfoPayload(payload map[string]interface{}) map[string]interface
 	}
 
 	return out
+}
+
+func fetchTimezoneByIP(ip string, client *http.Client) (string, string, error) {
+	ip = strings.TrimSpace(ip)
+	if ip == "" {
+		return "", "", fmt.Errorf("empty ip")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 10 * time.Second}
+	}
+
+	endpoint := fmt.Sprintf(ipTimezoneQueryURLTemplate, url.PathEscape(ip))
+	req, _ := http.NewRequest(http.MethodGet, endpoint, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "AntChrome/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("timezone lookup request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("timezone lookup read response failed: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", "", fmt.Errorf("timezone lookup HTTP %d: %s", resp.StatusCode, bodySnippet(body, 300))
+	}
+	return parseIPTimezonePayload(body)
+}
+
+func parseIPTimezonePayload(body []byte) (string, string, error) {
+	var payload struct {
+		Status      string `json:"status"`
+		Message     string `json:"message"`
+		CountryCode string `json:"countryCode"`
+		Timezone    string `json:"timezone"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", "", fmt.Errorf("timezone lookup JSON parse failed: %w", err)
+	}
+
+	status := strings.ToLower(strings.TrimSpace(payload.Status))
+	if status != "" && status != "success" {
+		msg := strings.TrimSpace(payload.Message)
+		if msg == "" {
+			msg = bodySnippet(body, 300)
+		}
+		return "", "", fmt.Errorf("timezone lookup failed: %s", msg)
+	}
+
+	timezone := strings.TrimSpace(payload.Timezone)
+	countryCode := strings.ToUpper(strings.TrimSpace(payload.CountryCode))
+	if timezone == "" {
+		return "", countryCode, fmt.Errorf("timezone missing in lookup response")
+	}
+	return timezone, countryCode, nil
+}
+
+func mapStringValue(m map[string]interface{}, key string) string {
+	if m == nil {
+		return ""
+	}
+	v, ok := m[key]
+	if !ok || v == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(v))
 }
