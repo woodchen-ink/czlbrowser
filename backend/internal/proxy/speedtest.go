@@ -20,7 +20,7 @@ import (
 // ─── Clash 标准测速 URL ───
 // 使用 HTTP 与 Clash 客户端保持一致
 
-const defaultTestURL = "http://www.gstatic.com/generate_204"
+const defaultTestURL = "https://www.google.com/generate_204"
 
 // SpeedTestConfig 测速参数
 type SpeedTestConfig struct {
@@ -39,6 +39,7 @@ var DefaultSpeedTestConfig = SpeedTestConfig{
 // SpeedTest 使用 mihomo 代理适配器进行测速。
 // 采用 unified-delay 策略：先建立连接（预热），再单独计时 HTTP 往返，
 // 与 Clash 客户端 unified-delay: true 的延迟结果一致。
+// 对于 URI 格式代理（vmess://、vless:// 等），通过 Xray/Sing-Box 桥接测速。
 func SpeedTest(
 	proxyId string,
 	proxies []config.BrowserProxy,
@@ -77,26 +78,75 @@ func SpeedTest(
 	// 将代理配置转换为 mihomo mapping
 	mapping, err := proxyConfigToMapping(src)
 	if err != nil {
-		log.Warn("代理配置解析失败，降级到 TCP ping",
+		log.Debug("代理配置解析为 mihomo mapping 失败，尝试通过桥接测速",
 			logger.F("proxy_id", proxyId),
 			logger.F("error", err.Error()),
 		)
-		return tcpPingFallback(proxyId, src, cfg.TCPTimeout, log)
+		// 尝试通过 Xray/Sing-Box 桥接进行 HTTP 测速
+		return bridgeSpeedTest(proxyId, src, proxies, xrayMgr, singboxMgr, testURL, cfg.Timeout, log)
 	}
 
 	// 使用 mihomo adapter.ParseProxy 创建代理实例
 	proxyInstance, err := adapter.ParseProxy(mapping)
 	if err != nil {
-		log.Warn("mihomo 代理创建失败，降级到 TCP ping",
+		log.Debug("mihomo 代理创建失败，尝试通过桥接测速",
 			logger.F("proxy_id", proxyId),
 			logger.F("error", err.Error()),
 			logger.F("type", mapping["type"]),
 		)
-		return tcpPingFallback(proxyId, src, cfg.TCPTimeout, log)
+		return bridgeSpeedTest(proxyId, src, proxies, xrayMgr, singboxMgr, testURL, cfg.Timeout, log)
 	}
 
 	// unified-delay 测速：分离连接建立和 HTTP 往返计时
 	return unifiedDelayTest(proxyId, proxyInstance, testURL, cfg.Timeout)
+}
+
+// bridgeSpeedTest 通过 Xray/Sing-Box 桥接进行 HTTP 测速，
+// 用于 URI 格式代理无法直接转换为 mihomo mapping 的场景。
+func bridgeSpeedTest(
+	proxyId, src string,
+	proxies []config.BrowserProxy,
+	xrayMgr *XrayManager,
+	singboxMgr *SingBoxManager,
+	testURL string,
+	timeout time.Duration,
+	log *logger.Logger,
+) TestResult {
+	client, err := buildProxyHTTPClient(src, proxyId, proxies, xrayMgr, singboxMgr, timeout)
+	if err != nil {
+		log.Debug("桥接客户端构建失败，降级到 TCP ping",
+			logger.F("proxy_id", proxyId),
+			logger.F("error", err.Error()),
+		)
+		return tcpPingFallback(proxyId, src, 5*time.Second, log)
+	}
+
+	// 预热请求（不计时）
+	warmReq, _ := http.NewRequest(http.MethodHead, testURL, nil)
+	warmReq.Header.Set("User-Agent", "AntChrome/1.0")
+	warmResp, err := client.Do(warmReq)
+	if err != nil {
+		return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("代理连接失败: %v", err)}
+	}
+	warmResp.Body.Close()
+
+	// 计时请求
+	start := time.Now()
+	req, _ := http.NewRequest(http.MethodHead, testURL, nil)
+	req.Header.Set("User-Agent", "AntChrome/1.0")
+	resp, err := client.Do(req)
+	latency := time.Since(start).Milliseconds()
+	if err != nil {
+		return TestResult{ProxyId: proxyId, Ok: false, LatencyMs: latency, Error: err.Error()}
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return TestResult{ProxyId: proxyId, Ok: false, LatencyMs: latency,
+			Error: fmt.Sprintf("HTTP %d", resp.StatusCode)}
+	}
+
+	return TestResult{ProxyId: proxyId, Ok: true, LatencyMs: latency}
 }
 
 // unifiedDelayTest 模拟 Clash unified-delay 模式：
@@ -212,9 +262,9 @@ func proxyConfigToMapping(src string) (map[string]any, error) {
 		return parseStandardProxy(src, "socks5")
 	}
 
-	// URI 格式（vmess:// vless:// 等）暂不支持直接转 mapping，降级
+	// URI 格式（vmess:// vless:// 等）无法直接转 mihomo mapping，返回错误由调用方走桥接
 	if strings.Contains(l, "://") && !strings.Contains(l, "type:") {
-		return nil, fmt.Errorf("URI 格式暂不支持: %s", l[:min(30, len(l))])
+		return nil, fmt.Errorf("URI 格式需要通过桥接测速: %s", l[:min(30, len(l))])
 	}
 
 	// Clash YAML 格式 → 直接解析

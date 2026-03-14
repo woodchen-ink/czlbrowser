@@ -1,11 +1,9 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Monitor, Play, Shield, Cpu, ArrowRight, Globe, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Card, Button, Modal, toast } from '../../shared/components'
-import { fetchDashboardStats, redeemCDKey, redeemGithubStar, reloadConfig } from './api'
+import { Card } from '../../shared/components'
+import { fetchDashboardStats } from './api'
 import type { DashboardStats } from './types'
-import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
-import { PROJECT_GITHUB_URL } from '../../config/links'
 
 interface StatCardProps {
   title: string
@@ -45,9 +43,6 @@ export function DashboardPage() {
     maxProfileLimit: 3,
   })
   const [loading, setLoading] = useState(true)
-  const [cdKey, setCdKey] = useState('')
-  const [redeeming, setRedeeming] = useState(false)
-  const [promoModalMsg, setPromoModalMsg] = useState('')
 
   useEffect(() => {
     load()
@@ -56,39 +51,9 @@ export function DashboardPage() {
   const load = async () => {
     setLoading(true)
     try {
-      await reloadConfig() // 强制从本地磁盘刷一次最新配置，解决各种情况下的容量不同步
       setStats(await fetchDashboardStats())
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleRedeem = async () => {
-    if (!cdKey.trim()) return
-    setRedeeming(true)
-    const result = await redeemCDKey(cdKey.trim())
-    setRedeeming(false)
-    if (result.success) {
-      toast.success('兑换成功！此名额已到账')
-      setCdKey('')
-      load() // Refresh stats
-    } else {
-      setPromoModalMsg(result.message || '兑换失败')
-    }
-  }
-
-  const handleAcceptPromo = async () => {
-    setPromoModalMsg('')
-    BrowserOpenURL(PROJECT_GITHUB_URL)
-    setRedeeming(true)
-    const starRes = await redeemGithubStar()
-    setRedeeming(false)
-    if (starRes.success) {
-      toast.success('感谢您的支持！已为您增加 3 个永久额度！')
-      setCdKey('')
-      load()
-    } else {
-      toast.error(starRes.message || '领取失败')
     }
   }
 
@@ -172,63 +137,8 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
-
-          <div className="mt-6 pt-6 border-t border-[var(--color-border-muted)]">
-            <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">扩容系统</h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="输入兑换码 (如 ANT-...)"
-                value={cdKey}
-                onChange={e => setCdKey(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleRedeem()}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-[var(--color-border-default)]
-                           bg-[var(--color-bg-input)] text-[var(--color-text-primary)]
-                           focus:outline-none focus:border-[var(--color-primary)] placeholder-[var(--color-text-muted)]"
-              />
-              <Button onClick={handleRedeem} loading={redeeming} disabled={!cdKey.trim()}>
-                兑换
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-[var(--color-text-muted)] flex items-center justify-between">
-              <span>当前容量限制：</span>
-              <span className={`font-medium ${stats.totalInstances >= stats.maxProfileLimit ? 'text-red-500' : 'text-[var(--color-success)]'}`}>
-                {loading ? '-' : `${stats.totalInstances} / ${stats.maxProfileLimit}`}
-              </span>
-            </p>
-          </div>
         </Card>
       </div>
-
-      <Modal
-        open={!!promoModalMsg}
-        onClose={() => setPromoModalMsg('')}
-        title="获取更多额度"
-        width="400px"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setPromoModalMsg('')}>不，谢谢</Button>
-            <Button onClick={handleAcceptPromo}>前往 GitHub 领福利</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="text-[var(--color-error)] font-medium">
-            {promoModalMsg}
-          </div>
-          <div className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-            <p className="mb-2">我们注意到您的初始额度可能不够用了。</p>
-            <p>作为开源项目的支持者，如果您愿意给本仓库点一个 <strong>Star</strong>，我们将自动为您增加 <strong>3</strong> 个永久额度！</p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-2">
-              如果外部浏览器没有自动打开，可点击这里：
-              <button type="button" className="ml-1 break-all text-[var(--color-accent)] underline underline-offset-2" onClick={() => BrowserOpenURL(PROJECT_GITHUB_URL)}>
-                {PROJECT_GITHUB_URL}
-              </button>
-            </p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-2">（每个账号仅限一次）</p>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }

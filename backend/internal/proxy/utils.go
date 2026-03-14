@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"ant-chrome/backend/internal/config"
-	xproxy "golang.org/x/net/proxy"
 	"gopkg.in/yaml.v3"
 )
 
@@ -252,17 +251,10 @@ func TestRealConnectivityWithSingBox(
 		if err != nil {
 			return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("sing-box 桥接启动失败: %v", err)}
 		}
-		socks5Host := strings.TrimPrefix(socks5Addr, "socks5://")
-		dialer, err := xproxy.SOCKS5("tcp", socks5Host, nil, xproxy.Direct)
+		client, err = buildSocks5HTTPClient(socks5Addr, timeout)
 		if err != nil {
-			return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("SOCKS5 dialer 创建失败: %v", err)}
+			return TestResult{ProxyId: proxyId, Ok: false, Error: err.Error()}
 		}
-		contextDialer, ok := dialer.(xproxy.ContextDialer)
-		if !ok {
-			return TestResult{ProxyId: proxyId, Ok: false, Error: "SOCKS5 dialer 不支持 ContextDialer"}
-		}
-		transport := &http.Transport{DialContext: contextDialer.DialContext}
-		client = &http.Client{Transport: transport, Timeout: timeout}
 	} else if RequiresBridge(src, proxies, proxyId) {
 		// BridgeProxy：通过 xray socks5 桥接
 		if xrayMgr == nil {
@@ -272,18 +264,10 @@ func TestRealConnectivityWithSingBox(
 		if err != nil {
 			return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("桥接启动失败: %v", err)}
 		}
-		// 解析 socks5://127.0.0.1:port
-		socks5Host := strings.TrimPrefix(socks5Addr, "socks5://")
-		dialer, err := xproxy.SOCKS5("tcp", socks5Host, nil, xproxy.Direct)
+		client, err = buildSocks5HTTPClient(socks5Addr, timeout)
 		if err != nil {
-			return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("SOCKS5 dialer 创建失败: %v", err)}
+			return TestResult{ProxyId: proxyId, Ok: false, Error: err.Error()}
 		}
-		contextDialer, ok := dialer.(xproxy.ContextDialer)
-		if !ok {
-			return TestResult{ProxyId: proxyId, Ok: false, Error: "SOCKS5 dialer 不支持 ContextDialer"}
-		}
-		transport := &http.Transport{DialContext: contextDialer.DialContext}
-		client = &http.Client{Transport: transport, Timeout: timeout}
 	} else {
 		// DirectProxy：http/https/socks5 直接代理
 		proxyURL, err := url.Parse(src)

@@ -549,22 +549,24 @@ type ProxyTestResult struct {
 	Error     string `json:"error"`
 }
 
-// ProxyIPHealthResult 代理出口 IP 健康信息（透传第三方接口结果）
+// ProxyIPHealthResult 代理出口 IP 信息（通过 ipinfo.czl.net 查询）
 type ProxyIPHealthResult struct {
-	ProxyId        string                 `json:"proxyId"`
-	Ok             bool                   `json:"ok"`
-	Source         string                 `json:"source"`
-	Error          string                 `json:"error"`
-	IP             string                 `json:"ip"`
-	FraudScore     int64                  `json:"fraudScore"`
-	IsResidential  bool                   `json:"isResidential"`
-	IsBroadcast    bool                   `json:"isBroadcast"`
-	Country        string                 `json:"country"`
-	Region         string                 `json:"region"`
-	City           string                 `json:"city"`
-	AsOrganization string                 `json:"asOrganization"`
-	RawData        map[string]interface{} `json:"rawData"`
-	UpdatedAt      string                 `json:"updatedAt"`
+	ProxyId      string                 `json:"proxyId"`
+	Ok           bool                   `json:"ok"`
+	Source       string                 `json:"source"`
+	Error        string                 `json:"error"`
+	IP           string                 `json:"ip"`
+	Country      string                 `json:"country"`
+	CountryCode  string                 `json:"countryCode"`
+	Region       string                 `json:"region"`
+	City         string                 `json:"city"`
+	Timezone     string                 `json:"timezone"`
+	ISP          string                 `json:"isp"`
+	Organization string                 `json:"organization"`
+	ASN          int64                  `json:"asn"`
+	ASName       string                 `json:"asName"`
+	RawData      map[string]interface{} `json:"rawData"`
+	UpdatedAt    string                 `json:"updatedAt"`
 }
 
 // TestProxyConnectivity 测试代理连通性
@@ -644,10 +646,10 @@ func (a *App) BrowserProxyBatchTestSpeed(proxyIds []string, concurrency int) []P
 	return results
 }
 
-// BrowserProxyCheckIPHealth 检测单个代理的出口 IP 健康信息（通过 IPPure 接口）
+// BrowserProxyCheckIPHealth 检测单个代理的出口 IP 信息
 func (a *App) BrowserProxyCheckIPHealth(proxyId string) ProxyIPHealthResult {
 	proxies := a.getLatestProxies()
-	data, err := proxy.FetchIPPureInfo(proxyId, proxies, a.xrayMgr, a.singboxMgr)
+	data, err := proxy.FetchIPInfo(proxyId, proxies, a.xrayMgr, a.singboxMgr)
 	result := buildProxyIPHealthResult(proxyId, data, err)
 	a.persistProxyIPHealthResult(result)
 	if a.ctx != nil {
@@ -656,7 +658,7 @@ func (a *App) BrowserProxyCheckIPHealth(proxyId string) ProxyIPHealthResult {
 	return result
 }
 
-// BrowserProxyBatchCheckIPHealth 批量并发检测代理出口 IP 健康信息
+// BrowserProxyBatchCheckIPHealth 批量并发检测代理出口 IP 信息
 func (a *App) BrowserProxyBatchCheckIPHealth(proxyIds []string, concurrency int) []ProxyIPHealthResult {
 	if len(proxyIds) == 0 {
 		return []ProxyIPHealthResult{}
@@ -682,7 +684,7 @@ func (a *App) BrowserProxyBatchCheckIPHealth(proxyIds []string, concurrency int)
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				data, err := proxy.FetchIPPureInfo(job.ProxyId, proxies, a.xrayMgr, a.singboxMgr)
+				data, err := proxy.FetchIPInfo(job.ProxyId, proxies, a.xrayMgr, a.singboxMgr)
 				result := buildProxyIPHealthResult(job.ProxyId, data, err)
 				a.persistProxyIPHealthResult(result)
 				results[job.Idx] = result
@@ -707,7 +709,7 @@ func buildProxyIPHealthResult(proxyId string, data map[string]interface{}, err e
 		return ProxyIPHealthResult{
 			ProxyId:   proxyId,
 			Ok:        false,
-			Source:    "ippure",
+			Source:    "ipinfo.czl.net",
 			Error:     err.Error(),
 			RawData:   map[string]interface{}{},
 			UpdatedAt: time.Now().Format(time.RFC3339),
@@ -719,20 +721,22 @@ func buildProxyIPHealthResult(proxyId string, data map[string]interface{}, err e
 	}
 
 	return ProxyIPHealthResult{
-		ProxyId:        proxyId,
-		Ok:             true,
-		Source:         "ippure",
-		Error:          "",
-		IP:             mapString(data, "ip"),
-		FraudScore:     mapInt64(data, "fraudScore"),
-		IsResidential:  mapBool(data, "isResidential"),
-		IsBroadcast:    mapBool(data, "isBroadcast"),
-		Country:        mapString(data, "country"),
-		Region:         mapString(data, "region"),
-		City:           mapString(data, "city"),
-		AsOrganization: mapString(data, "asOrganization"),
-		RawData:        data,
-		UpdatedAt:      time.Now().Format(time.RFC3339),
+		ProxyId:      proxyId,
+		Ok:           true,
+		Source:       "ipinfo.czl.net",
+		Error:        "",
+		IP:           mapString(data, "ip"),
+		Country:      mapString(data, "country"),
+		CountryCode:  mapString(data, "country_code"),
+		Region:       mapString(data, "region"),
+		City:         mapString(data, "city"),
+		Timezone:     mapString(data, "timezone"),
+		ISP:          mapString(data, "isp"),
+		Organization: mapString(data, "organization"),
+		ASN:          mapInt64(data, "asn"),
+		ASName:       mapString(data, "as_name"),
+		RawData:      data,
+		UpdatedAt:    time.Now().Format(time.RFC3339),
 	}
 }
 

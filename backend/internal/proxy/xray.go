@@ -114,6 +114,9 @@ func RequiresBridge(proxyConfig string, proxies []config.BrowserProxy, proxyId s
 	l := strings.ToLower(src)
 	// 标准代理格式，不需要桥接
 	if strings.HasPrefix(l, "http://") || strings.HasPrefix(l, "https://") || strings.HasPrefix(l, "socks5://") {
+		if _, ok := buildAuthBridgeOutboundFromStandardProxy(src); ok {
+			return true
+		}
 		return false
 	}
 	// hysteria2 Xray 不支持，不触发桥接
@@ -209,6 +212,12 @@ func (m *XrayManager) ensureBridge(proxyConfig string, proxies []config.BrowserP
 	if err != nil {
 		log.Error("节点解析失败", logger.F("error", err))
 		return "", "", err
+	}
+	if standardProxy != "" {
+		if bridgeOutbound, ok := buildAuthBridgeOutboundFromStandardProxy(standardProxy); ok {
+			outbound = bridgeOutbound
+			standardProxy = ""
+		}
 	}
 	if standardProxy != "" {
 		return standardProxy, "", nil

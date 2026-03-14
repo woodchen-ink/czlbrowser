@@ -15,8 +15,8 @@ export function AdminKeygenPage() {
     const [passwordInput, setPasswordInput] = useState('')
 
     const handleGenerate = async () => {
-        if (count <= 0 || count > 1000) {
-            toast.error('生成数量必须在 1 ~ 1000 之间')
+        if (count <= 0) {
+            toast.error('生成数量必须大于 0')
             return
         }
 
@@ -105,7 +105,6 @@ export function AdminKeygenPage() {
                                     <Input
                                         type="number"
                                         min={1}
-                                        max={100}
                                         value={count}
                                         onChange={(e) => setCount(parseInt(e.target.value) || 0)}
                                         placeholder="10"

@@ -48,13 +48,15 @@ export namespace backend {
 	    source: string;
 	    error: string;
 	    ip: string;
-	    fraudScore: number;
-	    isResidential: boolean;
-	    isBroadcast: boolean;
 	    country: string;
+	    countryCode: string;
 	    region: string;
 	    city: string;
-	    asOrganization: string;
+	    timezone: string;
+	    isp: string;
+	    organization: string;
+	    asn: number;
+	    asName: string;
 	    rawData: Record<string, any>;
 	    updatedAt: string;
 	
@@ -69,13 +71,15 @@ export namespace backend {
 	        this.source = source["source"];
 	        this.error = source["error"];
 	        this.ip = source["ip"];
-	        this.fraudScore = source["fraudScore"];
-	        this.isResidential = source["isResidential"];
-	        this.isBroadcast = source["isBroadcast"];
 	        this.country = source["country"];
+	        this.countryCode = source["countryCode"];
 	        this.region = source["region"];
 	        this.city = source["city"];
-	        this.asOrganization = source["asOrganization"];
+	        this.timezone = source["timezone"];
+	        this.isp = source["isp"];
+	        this.organization = source["organization"];
+	        this.asn = source["asn"];
+	        this.asName = source["asName"];
 	        this.rawData = source["rawData"];
 	        this.updatedAt = source["updatedAt"];
 	    }

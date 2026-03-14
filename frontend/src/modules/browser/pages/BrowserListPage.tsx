@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, CheckCircle, ChevronDown, ChevronRight, ChevronUp, Copy, Edit2, FileText, Key, Pencil, Play, Plus, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, Gift, LayoutGrid, List } from 'lucide-react'
+import { Activity, CheckCircle, ChevronDown, ChevronRight, ChevronUp, Copy, Edit2, FileText, Key, Pencil, Play, Plus, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, LayoutGrid, List } from 'lucide-react'
 import { Badge, Button, Card, FormItem, Input, Modal, StatCard, Table, Textarea, toast } from '../../../shared/components'
-import { fetchDashboardStats, redeemCDKey, redeemGithubStar, reloadConfig } from '../../dashboard/api'
 import type { TableColumn } from '../../../shared/components/Table'
 import type { BrowserCore, BrowserCoreInput, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount } from '../types'
 import { InstanceFilterBar, EMPTY_FILTERS } from '../components/InstanceFilterBar'
 import type { InstanceFilters } from '../components/InstanceFilterBar'
 import { KeywordsModal } from '../components/KeywordsModal'
-import { EventsOn, EventsOff, BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
-import { PROJECT_GITHUB_URL } from '../../../config/links'
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 import { resolveActionErrorMessage } from '../utils/actionErrors'
 import {
   copyBrowserProfile,
@@ -273,13 +271,6 @@ export function BrowserListPage() {
   const [coreValidation, setCoreValidation] = useState<{ valid: boolean; message: string } | null>(null)
   const [savingCore, setSavingCore] = useState(false)
 
-  // 扩容管理
-  const [expandModalOpen, setExpandModalOpen] = useState(false)
-  const [cdKey, setCdKey] = useState('')
-  const [redeeming, setRedeeming] = useState(false)
-  const [maxProfileLimit, setMaxProfileLimit] = useState(3)
-  const [promoModalMsg, setPromoModalMsg] = useState('')
-
   const loadProfiles = async () => {
     setLoading(true)
     try {
@@ -304,20 +295,9 @@ export function BrowserListPage() {
     setCores(await fetchBrowserCores())
   }
 
-  const loadQuota = async () => {
-    try {
-      await reloadConfig()
-      const stats = await fetchDashboardStats()
-      setMaxProfileLimit(stats.maxProfileLimit || 3)
-    } catch {
-      // ignore
-    }
-  }
-
   useEffect(() => {
     loadProfiles()
     loadGroups()
-    loadQuota()
     fetchBrowserProxies().then(setProxies)
     fetchBrowserCores().then(setCores)
 
@@ -598,35 +578,6 @@ export function BrowserListPage() {
     loadCores()
   }
 
-  const handleRedeem = async () => {
-    if (!cdKey.trim()) return
-    setRedeeming(true)
-    const result = await redeemCDKey(cdKey.trim())
-    setRedeeming(false)
-    if (result.success) {
-      toast.success('兑换成功！此名额已到账')
-      setCdKey('')
-      loadQuota()
-    } else {
-      setPromoModalMsg(result.message || '兑换失败')
-    }
-  }
-
-  const handleAcceptPromo = async () => {
-    setPromoModalMsg('')
-    BrowserOpenURL(PROJECT_GITHUB_URL)
-    setRedeeming(true)
-    const starRes = await redeemGithubStar()
-    setRedeeming(false)
-    if (starRes.success) {
-      toast.success('感谢您的支持！已为您增加 3 个永久额度！')
-      setCdKey('')
-      loadQuota()
-    } else {
-      toast.error(starRes.message || '领取失败')
-    }
-  }
-
   const columns: TableColumn<BrowserProfile>[] = [
     {
       key: 'selection',
@@ -767,9 +718,6 @@ export function BrowserListPage() {
           <Button variant="secondary" size="sm" onClick={() => setHeaderCollapsed(prev => !prev)}>{headerCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}{headerCollapsed ? '展开面板' : '收起面板'}</Button>
           <Button variant="secondary" size="sm" onClick={loadProfiles}><RefreshCw className="w-4 h-4" />刷新</Button>
           <Button variant="secondary" size="sm" onClick={handleOpenSettings}><Sliders className="w-4 h-4" />基础配置</Button>
-          <Button variant="secondary" size="sm" onClick={() => { setCdKey(''); setExpandModalOpen(true); loadQuota() }} className="text-[var(--color-primary)] border-[var(--color-primary)] hover:bg-[var(--color-primary)]/10">
-            <Gift className="w-4 h-4" />扩容实例
-          </Button>
           <div className="flex items-center bg-[var(--color-bg-secondary)] rounded-md border border-[var(--color-border-default)] p-0.5 ml-2">
             <button
               className={`p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors ${viewMode === 'card' ? 'bg-[var(--color-bg-surface)] shadow-sm text-[var(--color-accent)]' : ''}`}
@@ -1023,56 +971,6 @@ export function BrowserListPage() {
         />
       )}
 
-      {/* 扩容弹窗 */}
-      <Modal
-        open={expandModalOpen}
-        onClose={() => setExpandModalOpen(false)}
-        title="实例扩容系统"
-        width="480px"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setExpandModalOpen(false)}>关闭</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="bg-[var(--color-bg-secondary)] p-4 rounded-lg flex items-center justify-between border border-[var(--color-border-default)]">
-            <div>
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">当前使用情况</p>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">每个配置都需要消耗 1 个实例额度</p>
-            </div>
-            <div className="text-right">
-              <span className={`text-2xl font-semibold ${profiles.length >= maxProfileLimit ? 'text-red-500' : 'text-[var(--color-success)]'}`}>
-                {profiles.length}
-              </span>
-              <span className="text-sm text-[var(--color-text-muted)] ml-1">/ {maxProfileLimit}</span>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-[var(--color-border-muted)]">
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">使用兑换码扩容</label>
-            <div className="flex gap-2">
-              <Input
-                value={cdKey}
-                onChange={e => setCdKey(e.target.value)}
-                placeholder="输入兑换码 (如 ANT-...)"
-                onKeyDown={e => e.key === 'Enter' && handleRedeem()}
-                className="flex-1"
-              />
-              <Button onClick={handleRedeem} loading={redeeming} disabled={!cdKey.trim()}>
-                进行兑换
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              ⭐ <strong>福利放送</strong>：在弹窗验证时选择前往 GitHub 为本项目点亮 Star 即可自动获赠 3 个永久实例名额！每个账号限领一次。
-            </p>
-          </div>
-        </div>
-      </Modal>
-
       {/* 复制实例弹窗 */}
       <Modal
         open={copyModal.open}
@@ -1101,36 +999,6 @@ export function BrowserListPage() {
         </div>
       </Modal>
 
-      {/* 获赠提示弹窗 */}
-      <Modal
-        open={!!promoModalMsg}
-        onClose={() => setPromoModalMsg('')}
-        title="获取更多额度"
-        width="400px"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setPromoModalMsg('')}>不，谢谢</Button>
-            <Button onClick={handleAcceptPromo}>前往 GitHub 领福利</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="text-[var(--color-error)] font-medium">
-            {promoModalMsg}
-          </div>
-          <div className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-            <p className="mb-2">我们注意到您的初始额度可能不够用了。</p>
-            <p>作为开源项目的支持者，如果您愿意给本仓库点一个 <strong>Star</strong>，我们将自动为您增加 <strong>3</strong> 个永久额度！</p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-2">
-              如果外部浏览器没有自动打开，可点击这里：
-              <button type="button" className="ml-1 break-all text-[var(--color-accent)] underline underline-offset-2" onClick={() => BrowserOpenURL(PROJECT_GITHUB_URL)}>
-                {PROJECT_GITHUB_URL}
-              </button>
-            </p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-2">（每个账号仅限一次）</p>
-          </div>
-        </div>
-      </Modal>
       {/* 操作错误弹窗 */}
       <Modal
         open={!!opError}

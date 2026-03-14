@@ -116,10 +116,24 @@ func stopProcessCmdForShutdown(cmd *exec.Cmd) error {
 	}
 
 	pid := cmd.Process.Pid
-	if pid > 0 {
-		if err := forceKillProcessTree(pid); err == nil || isProcessAlreadyFinished(err) {
-			return nil
+	if pid <= 0 {
+		return nil
+	}
+
+	// 优先尝试非强制终止（让 Chrome 走正常退出路径，写入 exit_type=Normal）
+	if stdruntime.GOOS == "windows" {
+		softKillCmd := exec.Command("taskkill", "/PID", fmt.Sprintf("%d", pid), "/T")
+		hideWindow(softKillCmd)
+		if err := softKillCmd.Run(); err == nil {
+			if waitProcessExitWindows(pid, 3*time.Second) {
+				return nil
+			}
 		}
+	}
+
+	// 非强制未能退出，再强制终止
+	if err := forceKillProcessTree(pid); err == nil || isProcessAlreadyFinished(err) {
+		return nil
 	}
 
 	err := cmd.Process.Kill()

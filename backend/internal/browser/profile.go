@@ -209,11 +209,6 @@ func (m *Manager) Create(input ProfileInput) (*Profile, error) {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
 
-	// Check Profile Limit
-	if m.Config.App.MaxProfileLimit > 0 && len(m.Profiles) >= m.Config.App.MaxProfileLimit {
-		return nil, fmt.Errorf("实例数量已达上限 (%d个)，无法创建新的实例。请兑换额度后重试！", m.Config.App.MaxProfileLimit)
-	}
-
 	now := time.Now().Format(time.RFC3339)
 	profileId := uuid.NewString()
 	userDataDir := strings.TrimSpace(input.UserDataDir)
@@ -380,12 +375,6 @@ func (m *Manager) Copy(profileId string, newName string) (*Profile, error) {
 	m.InitData()
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
-
-	// Check Profile Limit
-	if m.Config.App.MaxProfileLimit > 0 && len(m.Profiles) >= m.Config.App.MaxProfileLimit {
-		log.Error("复制实例失败: 达到数量上限", logger.F("limit", m.Config.App.MaxProfileLimit))
-		return nil, fmt.Errorf("实例数量已达上限 (%d个)，无法复制实例。请兑换额度后重试！", m.Config.App.MaxProfileLimit)
-	}
 
 	src, exists := m.Profiles[profileId]
 	if !exists {

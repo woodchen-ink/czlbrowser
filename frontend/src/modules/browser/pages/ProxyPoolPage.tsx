@@ -88,6 +88,55 @@ function parseProxyInfo(proxyConfig: string): { type: string; server: string; po
   }
 }
 
+/** 将标准代理 URL (socks5://user:pass@host:port) 转为 Clash YAML 配置 */
+function proxyURLToClashYaml(input: string): { name: string; config: string } | null {
+  const raw = input.trim()
+  if (!raw) return null
+  const match = raw.match(/^([a-zA-Z0-9]+):\/\/(.+)$/)
+  if (!match) return null
+  const scheme = match[1].toLowerCase()
+  const rest = match[2]
+
+  if (!['socks5', 'http', 'https'].includes(scheme)) return null
+
+  let username = '', password = '', hostport = ''
+  const atIdx = rest.lastIndexOf('@')
+  if (atIdx >= 0) {
+    const userInfo = rest.slice(0, atIdx)
+    hostport = rest.slice(atIdx + 1)
+    const colonIdx = userInfo.indexOf(':')
+    if (colonIdx >= 0) {
+      username = userInfo.slice(0, colonIdx)
+      password = userInfo.slice(colonIdx + 1)
+    } else {
+      username = userInfo
+    }
+  } else {
+    hostport = rest
+  }
+
+  // 去掉尾部 path
+  hostport = hostport.split('/')[0]
+  const parts = hostport.split(':')
+  if (parts.length < 2) return null
+  const port = parseInt(parts[parts.length - 1])
+  const server = parts.slice(0, -1).join(':')
+  if (!server || !port) return null
+
+  const name = `${scheme}-${server}:${port}`
+  const lines = [
+    `- name: "${name}"`,
+    `  type: ${scheme}`,
+    `  server: ${server}`,
+    `  port: ${port}`,
+  ]
+  if (username) lines.push(`  username: "${username}"`)
+  if (password) lines.push(`  password: "${password}"`)
+  if (scheme === 'https') lines.push(`  tls: true`)
+
+  return { name, config: lines.join('\n') }
+}
+
 function toDisplayList(proxies: BrowserProxy[]): ProxyDisplayInfo[] {
   return proxies.map(p => {
     const info = parseProxyInfo(p.proxyConfig)
@@ -549,7 +598,9 @@ export function ProxyPoolPage() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingProxy, setEditingProxy] = useState<BrowserProxy | null>(null)
   const [editForm, setEditForm] = useState({ proxyName: '', proxyConfig: '', dnsServers: '', groupName: '' })
+  const [editFormQuickFill, setEditFormQuickFill] = useState('')
   const [saving, setSaving] = useState(false)
+  const [isAddMode, setIsAddMode] = useState(false)
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -985,9 +1036,9 @@ export function ProxyPoolPage() {
       })
       const failed = results.filter(r => !r.ok).length
       if (failed > 0) {
-        toast.info(`IP 健康检测完成：成功 ${results.length - failed}，失败 ${failed}`)
+        toast.info(`IP 分析完成：成功 ${results.length - failed}，失败 ${failed}`)
       } else {
-        toast.success(`IP 健康检测完成：共 ${results.length} 条`)
+        toast.success(`IP 分析完成：共 ${results.length} 条`)
       }
     } finally {
       off()
@@ -1045,7 +1096,7 @@ export function ProxyPoolPage() {
         <div className="min-w-0">
           <div className="text-xs text-[var(--color-text-primary)] truncate">{result.ip || '-'}</div>
           <div className="text-[11px] text-[var(--color-text-muted)] truncate">
-            {`fraud ${result.fraudScore} | ${result.isResidential ? '住宅' : '机房'}${location ? ` | ${location}` : ''}`}
+            {[result.isp, location, result.timezone].filter(Boolean).join(' | ')}
           </div>
         </div>
         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openIPHealthDetail(record.proxyId) }}>原始</Button>
@@ -1100,7 +1151,7 @@ export function ProxyPoolPage() {
     },
     {
       key: 'ipHealth',
-      title: 'IP健康',
+      title: 'IP 分析',
       width: '280px',
       render: (_, record) => renderIPHealth(record),
     },
@@ -1134,7 +1185,7 @@ export function ProxyPoolPage() {
               onClick={(e) => { e.stopPropagation(); handleCheckOneIPHealth(record) }}
               loading={checkingIPHealthIds.has(record.proxyId)}
               disabled={record.proxyConfig === 'direct://'}
-            >IP健康</Button>
+            >IP分析</Button>
             <Button
               size="sm" variant="ghost"
               disabled={isBuiltin}
@@ -1184,25 +1235,64 @@ export function ProxyPoolPage() {
   const handleEdit = (record: ProxyDisplayInfo) => {
     const proxy = proxies.find(p => p.proxyId === record.proxyId)
     if (proxy) {
+      setIsAddMode(false)
       setEditingProxy(proxy)
       setEditForm({ proxyName: proxy.proxyName, proxyConfig: proxy.proxyConfig, dnsServers: proxy.dnsServers || '', groupName: proxy.groupName || '' })
+      setEditFormQuickFill('')
       setEditModalOpen(true)
     }
   }
 
+  const handleAddProxy = () => {
+    setIsAddMode(true)
+    setEditingProxy(null)
+    setEditForm({ proxyName: '', proxyConfig: '', dnsServers: '', groupName: '' })
+    setEditFormQuickFill('')
+    setEditModalOpen(true)
+  }
+
+  const handleQuickFill = () => {
+    const parsed = proxyURLToClashYaml(editFormQuickFill)
+    if (!parsed) {
+      toast.error('无法解析，请输入 socks5://、http:// 或 https:// 格式的代理地址')
+      return
+    }
+    setEditForm(prev => ({
+      ...prev,
+      proxyName: prev.proxyName || parsed.name,
+      proxyConfig: parsed.config,
+    }))
+    toast.success('已填充代理配置')
+  }
+
   const handleSaveProxy = async () => {
     if (!editForm.proxyName.trim()) { toast.error('请输入代理名称'); return }
-    if (!editingProxy) return
+    if (!editForm.proxyConfig.trim()) { toast.error('请输入代理配置'); return }
     setSaving(true)
     try {
-      const newProxies = proxies.map(p =>
-        p.proxyId === editingProxy.proxyId
-          ? { ...p, proxyName: editForm.proxyName, proxyConfig: editForm.proxyConfig, dnsServers: editForm.dnsServers, groupName: editForm.groupName }
-          : p
-      )
-      await saveProxies(newProxies)
-      setEditModalOpen(false)
-      toast.success('代理已更新')
+      if (isAddMode) {
+        const newProxy: BrowserProxy = {
+          proxyId: nextProxyID(),
+          proxyName: editForm.proxyName.trim(),
+          proxyConfig: editForm.proxyConfig.trim(),
+          dnsServers: editForm.dnsServers.trim() || undefined,
+          groupName: editForm.groupName.trim() || undefined,
+        }
+        const allProxies = [...proxies, newProxy]
+        await saveProxies(allProxies)
+        setEditModalOpen(false)
+        toast.success('代理已添加')
+      } else {
+        if (!editingProxy) return
+        const newProxies = proxies.map(p =>
+          p.proxyId === editingProxy.proxyId
+            ? { ...p, proxyName: editForm.proxyName, proxyConfig: editForm.proxyConfig, dnsServers: editForm.dnsServers, groupName: editForm.groupName }
+            : p
+        )
+        await saveProxies(newProxies)
+        setEditModalOpen(false)
+        toast.success('代理已更新')
+      }
     } catch (error: any) {
       toast.error(error?.message || '保存失败')
     } finally {
@@ -1369,9 +1459,10 @@ export function ProxyPoolPage() {
           >
             刷新订阅
           </Button>
-          <Button size="sm" variant="secondary" onClick={handleCheckAllIPHealth} loading={checkingAllIPHealth} disabled={filteredList.length === 0}>检测IP健康</Button>
+          <Button size="sm" variant="secondary" onClick={handleCheckAllIPHealth} loading={checkingAllIPHealth} disabled={filteredList.length === 0}>IP 分析</Button>
           <Button size="sm" variant="secondary" onClick={handleTestAll} loading={testingAll} disabled={filteredList.length === 0}>测试全部</Button>
-          <Button size="sm" onClick={() => setImportModalOpen(true)}>导入 Clash</Button>
+          <Button size="sm" variant="secondary" onClick={() => setImportModalOpen(true)}>导入 Clash</Button>
+          <Button size="sm" onClick={handleAddProxy}>新增代理</Button>
         </div>
       </div>
 
@@ -1540,9 +1631,22 @@ export function ProxyPoolPage() {
         </div>
       </Modal>
 
-      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="编辑代理" width="500px"
-        footer={<><Button variant="secondary" onClick={() => setEditModalOpen(false)}>取消</Button><Button onClick={handleSaveProxy} loading={saving}>保存</Button></>}>
+      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title={isAddMode ? '新增代理' : '编辑代理'} width="500px"
+        footer={<><Button variant="secondary" onClick={() => setEditModalOpen(false)}>取消</Button><Button onClick={handleSaveProxy} loading={saving}>{isAddMode ? '添加' : '保存'}</Button></>}>
         <div className="space-y-4">
+          <FormItem label="快速填充" hint="粘贴代理地址自动解析为配置">
+            <div className="flex gap-2">
+              <Input
+                value={editFormQuickFill}
+                onChange={e => setEditFormQuickFill(e.target.value)}
+                placeholder="socks5://user:pass@host:port"
+                className="flex-1"
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQuickFill() } }}
+              />
+              <Button variant="secondary" onClick={handleQuickFill} disabled={!editFormQuickFill.trim()}>填充</Button>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">支持 socks5://、http://、https:// 格式，填充后可手动修改</p>
+          </FormItem>
           <FormItem label="代理名称" required>
             <Input value={editForm.proxyName} onChange={e => setEditForm(prev => ({ ...prev, proxyName: e.target.value }))} placeholder="例如：香港节点" />
           </FormItem>
@@ -1552,7 +1656,7 @@ export function ProxyPoolPage() {
               {groups.map(g => <option key={g} value={g} />)}
             </datalist>
           </FormItem>
-          <FormItem label="代理配置">
+          <FormItem label="代理配置" required>
             <Textarea value={editForm.proxyConfig} onChange={e => setEditForm(prev => ({ ...prev, proxyConfig: e.target.value }))} rows={10} placeholder="Clash YAML 格式配置" />
           </FormItem>
           <FormItem label="DNS 服务器（可选）">
@@ -1566,7 +1670,7 @@ export function ProxyPoolPage() {
       <Modal
         open={ipHealthDetailOpen}
         onClose={() => setIPHealthDetailOpen(false)}
-        title="IP健康原始返回"
+        title="IP 分析原始返回"
         width="760px"
         footer={<Button variant="secondary" onClick={() => setIPHealthDetailOpen(false)}>关闭</Button>}
       >

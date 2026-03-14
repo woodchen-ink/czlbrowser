@@ -73,13 +73,6 @@ func (a *App) RedeemCDKey(cdkey string) error {
 		return fmt.Errorf("无效的兑换码 (Checksum Error)")
 	}
 
-	// 2. 防重放校验
-	for _, usedKey := range a.config.App.UsedCDKeys {
-		if usedKey == cdkey {
-			return fmt.Errorf("该兑换码已被使用过")
-		}
-	}
-
 	// 3. 兑现与本地保存
 	a.config.App.MaxProfileLimit += 3
 	a.config.App.UsedCDKeys = append(a.config.App.UsedCDKeys, cdkey)
@@ -108,12 +101,6 @@ func (a *App) RedeemGithubStar() error {
 		a.config = DefaultConfig()
 	}
 	cdkey := "GITHUB_STAR_REWARD"
-	// 防重复领取
-	for _, usedKey := range a.config.App.UsedCDKeys {
-		if usedKey == cdkey {
-			return fmt.Errorf("您已经领取过 GitHub Star 的赠送额度啦！")
-		}
-	}
 
 	// 兑现与本地保存: 增加 3 个
 	a.config.App.MaxProfileLimit += 3
@@ -132,8 +119,8 @@ func (a *App) RedeemGithubStar() error {
 
 // GenerateCDKeys 供内部隐藏管理员页面使用的发卡器接口
 func (a *App) GenerateCDKeys(count int) ([]string, error) {
-	if count <= 0 || count > 1000 {
-		return nil, fmt.Errorf("生成数量无效 (1-1000)")
+	if count <= 0 {
+		return nil, fmt.Errorf("生成数量无效 (需大于 0)")
 	}
 
 	rand.Seed(time.Now().UnixNano())

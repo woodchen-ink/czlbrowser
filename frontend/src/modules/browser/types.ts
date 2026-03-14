@@ -91,13 +91,15 @@ export interface ProxyIPHealthResult {
   source: string
   error: string
   ip: string
-  fraudScore: number
-  isResidential: boolean
-  isBroadcast: boolean
   country: string
+  countryCode: string
   region: string
   city: string
-  asOrganization: string
+  timezone: string
+  isp: string
+  organization: string
+  asn: number
+  asName: string
   rawData: Record<string, any>
   updatedAt: string
 }

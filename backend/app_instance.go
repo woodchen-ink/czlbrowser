@@ -4,7 +4,11 @@ import (
 	"ant-chrome/backend/internal/browser"
 	"ant-chrome/backend/internal/logger"
 	"ant-chrome/backend/internal/proxy"
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -153,6 +157,8 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		fmt.Sprintf("--user-data-dir=%s", userDataDir),
 		fmt.Sprintf("--remote-debugging-port=%d", debugPort),
 		"--disable-session-crashed-bubble",
+		"--hide-crash-restore-bubble",
+		"--no-default-browser-check",
 	}
 
 	hasFingerprint := false
@@ -182,6 +188,8 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	args = append(args, profile.FingerprintArgs...)
 	args = append(args, profile.LaunchArgs...)
 	args = append(args, normalizeNonEmptyStrings(extraLaunchArgs)...)
+	args = a.applyProxyLocaleArgs(args, profile.ProxyId, resolvedProxyConfig, proxies, log, profileId)
+	args = autoFillWebGLArgs(args, log, profileId)
 
 	if normalizedURLs := normalizeNonEmptyStrings(startURLs); len(normalizedURLs) > 0 {
 		args = append(args, normalizedURLs...)
@@ -189,22 +197,32 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		args = browser.BuildLaunchArgs(args, profile)
 	}
 
+	// 启动前修补 Preferences，清除上次可能的异常退出标记，避免 Chrome 显示"未正常关闭"恢复页面
+	patchChromePreferencesForCleanStart(userDataDir, log, profileId)
+
 	cmd := exec.Command(chromeBinaryPath, args...)
-	hideWindow(cmd)
+	// 注意：不对 Chrome 进程调用 hideWindow——Chrome 是 GUI 程序，HideWindow 会导致浏览器窗口不可见
 	cmd.Dir = filepath.Dir(chromeBinaryPath)
+	stderrCapture := newCappedLogBuffer(64 * 1024)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = stderrCapture
 	if err := cmd.Start(); err != nil {
 		startErr := fmt.Errorf("%s", describeChromeProcessStartError(chromeBinaryPath, err))
 		log.Error("浏览器进程启动失败", logger.F("profile_id", profileId), logger.F("chrome", chromeBinaryPath), logger.F("error", err), logger.F("reason", startErr.Error()))
 		profile.LastError = startErr.Error()
 		return profile, startErr
 	}
-	if err := waitBrowserDebugPortReady(debugPort, browserStartReadyTimeout); err != nil {
+	if err := waitBrowserDebugPortReady(debugPort, cmd, browserStartReadyTimeout); err != nil {
+		launchOutput := summarizeProcessOutput(stderrCapture.String(), 8, 1800)
 		startErr := fmt.Errorf("%s", describeBrowserReadyTimeout(debugPort, browserStartReadyTimeout))
+		if errors.Is(err, errBrowserProcessExitedBeforeReady) {
+			startErr = fmt.Errorf("实例启动失败：浏览器进程在调试端口 %d 就绪前提前退出。可能是用户数据目录异常或被占用，请检查或重置实例数据后重试。", debugPort)
+		}
+		if launchOutput != "" {
+			startErr = fmt.Errorf("%s\n内核输出（末尾）：%s", startErr.Error(), launchOutput)
+		}
 		log.Error("浏览器启动未就绪", logger.F("profile_id", profileId), logger.F("chrome", chromeBinaryPath), logger.F("error", err), logger.F("reason", startErr.Error()))
-		_ = a.stopProcessCmd(cmd)
-		go func() {
-			_ = cmd.Wait()
-		}()
+		_ = a.cleanupFailedBrowserStart(cmd)
 		profile.LastError = startErr.Error()
 		return profile, startErr
 	}
@@ -460,6 +478,263 @@ func (a *App) waitBrowserProcess(profileId string, cmd *exec.Cmd) {
 	}
 }
 
+type cappedLogBuffer struct {
+	max int
+	buf bytes.Buffer
+}
+
+func newCappedLogBuffer(maxBytes int) *cappedLogBuffer {
+	return &cappedLogBuffer{max: maxBytes}
+}
+
+func (b *cappedLogBuffer) Write(p []byte) (int, error) {
+	if b == nil || b.max <= 0 || len(p) == 0 {
+		return len(p), nil
+	}
+	if len(p) >= b.max {
+		b.buf.Reset()
+		_, _ = b.buf.Write(p[len(p)-b.max:])
+		return len(p), nil
+	}
+	overflow := b.buf.Len() + len(p) - b.max
+	if overflow > 0 {
+		_ = b.buf.Next(overflow)
+	}
+	_, _ = b.buf.Write(p)
+	return len(p), nil
+}
+
+func (b *cappedLogBuffer) String() string {
+	if b == nil {
+		return ""
+	}
+	return b.buf.String()
+}
+
+func summarizeProcessOutput(raw string, maxLines int, maxChars int) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = strings.ReplaceAll(trimmed, "\r\n", "\n")
+	trimmed = strings.ReplaceAll(trimmed, "\r", "\n")
+	lines := strings.Split(trimmed, "\n")
+	cleaned := make([]string, 0, len(lines))
+	for _, line := range lines {
+		v := strings.TrimSpace(line)
+		if v != "" {
+			cleaned = append(cleaned, v)
+		}
+	}
+	if len(cleaned) == 0 {
+		return ""
+	}
+	if maxLines > 0 && len(cleaned) > maxLines {
+		cleaned = cleaned[len(cleaned)-maxLines:]
+	}
+	summary := strings.Join(cleaned, " | ")
+	if maxChars > 0 && len(summary) > maxChars {
+		return summary[len(summary)-maxChars:]
+	}
+	return summary
+}
+
+func (a *App) cleanupFailedBrowserStart(cmd *exec.Cmd) error {
+	if cmd == nil {
+		return nil
+	}
+	_ = a.stopProcessCmd(cmd)
+	done := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+	}
+	return nil
+}
+
+func (a *App) applyProxyLocaleArgs(args []string, proxyID string, resolvedProxyConfig string, proxies []browser.Proxy, log *logger.Logger, profileID string) []string {
+	proxyID = strings.TrimSpace(proxyID)
+	if proxyID == "" {
+		return args
+	}
+	if strings.EqualFold(strings.TrimSpace(resolvedProxyConfig), "direct://") {
+		return args
+	}
+
+	timezone, countryCode, ok := a.resolveProxyLocale(proxyID, proxies)
+	if !ok || timezone == "" {
+		log.Warn("代理出口时区解析失败，浏览器时区可能与 IP 地区不一致，建议先对代理执行 IP 检测",
+			logger.F("profile_id", profileID),
+			logger.F("proxy_id", proxyID),
+		)
+		return args
+	}
+	language := defaultLanguageByCountryCode(countryCode)
+	if language == "" {
+		language = "en-US"
+	}
+
+	updated := upsertKeyValueArg(args, "--timezone", timezone)
+	updated = upsertKeyValueArg(updated, "--lang", language)
+	log.Info("按代理出口自动设置时区与语言",
+		logger.F("profile_id", profileID),
+		logger.F("proxy_id", proxyID),
+		logger.F("timezone", timezone),
+		logger.F("language", language),
+		logger.F("country_code", countryCode),
+	)
+	return updated
+}
+
+func (a *App) resolveProxyLocale(proxyID string, proxies []browser.Proxy) (string, string, bool) {
+	for _, item := range proxies {
+		if !strings.EqualFold(item.ProxyId, proxyID) {
+			continue
+		}
+		if timezone, countryCode, ok := parseProxyLocaleFromHealthJSON(item.LastIPHealthJSON); ok {
+			return timezone, countryCode, true
+		}
+
+		data, err := proxy.FetchIPInfo(proxyID, proxies, a.xrayMgr, a.singboxMgr)
+		if err != nil {
+			return "", "", false
+		}
+		result := buildProxyIPHealthResult(proxyID, data, nil)
+		a.persistProxyIPHealthResult(result)
+		if result.Timezone != "" {
+			return result.Timezone, strings.ToUpper(strings.TrimSpace(result.CountryCode)), true
+		}
+		return "", "", false
+	}
+	return "", "", false
+}
+
+func parseProxyLocaleFromHealthJSON(raw string) (string, string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", "", false
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return "", "", false
+	}
+
+	pick := func(m map[string]interface{}, keys ...string) string {
+		for _, key := range keys {
+			if v := strings.TrimSpace(mapString(m, key)); v != "" {
+				return v
+			}
+		}
+		return ""
+	}
+
+	timezone := pick(payload, "timezone")
+	countryCode := pick(payload, "countryCode", "country_code")
+
+	if rawData, ok := payload["rawData"].(map[string]interface{}); ok {
+		if timezone == "" {
+			timezone = pick(rawData, "timezone")
+		}
+		if countryCode == "" {
+			countryCode = pick(rawData, "countryCode", "country_code")
+		}
+	}
+	if data, ok := payload["data"].(map[string]interface{}); ok {
+		if timezone == "" {
+			timezone = pick(data, "timezone")
+		}
+		if countryCode == "" {
+			countryCode = pick(data, "countryCode", "country_code")
+		}
+	}
+
+	timezone = strings.TrimSpace(timezone)
+	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
+	if timezone == "" {
+		return "", "", false
+	}
+	return timezone, countryCode, true
+}
+
+func defaultLanguageByCountryCode(countryCode string) string {
+	switch strings.ToUpper(strings.TrimSpace(countryCode)) {
+	case "DE", "AT", "CH":
+		return "de-DE"
+	case "FR":
+		return "fr-FR"
+	case "ES":
+		return "es-ES"
+	case "IT":
+		return "it-IT"
+	case "JP":
+		return "ja-JP"
+	case "KR":
+		return "ko-KR"
+	case "RU":
+		return "ru-RU"
+	case "CN":
+		return "zh-CN"
+	case "TW":
+		return "zh-TW"
+	case "HK":
+		return "zh-HK"
+	case "GB":
+		return "en-GB"
+	case "US", "CA", "AU", "NZ":
+		return "en-US"
+	default:
+		return "en-US"
+	}
+}
+
+func upsertKeyValueArg(args []string, key string, value string) []string {
+	key = strings.TrimSpace(key)
+	value = strings.TrimSpace(value)
+	if key == "" || value == "" {
+		return args
+	}
+
+	prefix := strings.ToLower(key + "=")
+	replacement := key + "=" + value
+	out := make([]string, 0, len(args)+1)
+	replaced := false
+
+	for i := 0; i < len(args); i++ {
+		current := strings.TrimSpace(args[i])
+		lower := strings.ToLower(current)
+
+		if strings.HasPrefix(lower, prefix) {
+			if !replaced {
+				out = append(out, replacement)
+				replaced = true
+			}
+			continue
+		}
+		if strings.EqualFold(current, key) {
+			if !replaced {
+				out = append(out, replacement)
+				replaced = true
+			}
+			if i+1 < len(args) && !strings.HasPrefix(strings.TrimSpace(args[i+1]), "--") {
+				i++
+			}
+			continue
+		}
+
+		out = append(out, current)
+	}
+
+	if !replaced {
+		out = append(out, replacement)
+	}
+	return out
+}
+
 func normalizeNonEmptyStrings(items []string) []string {
 	if len(items) == 0 {
 		return nil
@@ -472,6 +747,73 @@ func normalizeNonEmptyStrings(items []string) []string {
 		}
 	}
 	return out
+}
+
+func filterManagedLaunchArgs(args []string) ([]string, []string) {
+	if len(args) == 0 {
+		return nil, nil
+	}
+
+	managedValueFlags := map[string]bool{
+		"--proxy-server":          true,
+		"--proxy-pac-url":         true,
+		"--remote-debugging-port": true,
+		"--user-data-dir":         true,
+	}
+	managedBoolFlags := map[string]bool{
+		"--proxy-auto-detect":     true,
+		"--no-proxy-server":       true,
+		"--remote-debugging-pipe": true,
+	}
+	managedPrefixFlags := []string{
+		"--proxy-server=",
+		"--proxy-pac-url=",
+		"--remote-debugging-port=",
+		"--user-data-dir=",
+	}
+
+	filtered := make([]string, 0, len(args))
+	removed := make([]string, 0, 8)
+	for i := 0; i < len(args); i++ {
+		v := strings.TrimSpace(args[i])
+		if v == "" {
+			continue
+		}
+		l := strings.ToLower(v)
+
+		removedByPrefix := false
+		for _, prefix := range managedPrefixFlags {
+			if strings.HasPrefix(l, prefix) {
+				removedByPrefix = true
+				break
+			}
+		}
+		if removedByPrefix {
+			removed = append(removed, v)
+			continue
+		}
+
+		if managedBoolFlags[l] {
+			removed = append(removed, v)
+			continue
+		}
+
+		if managedValueFlags[l] {
+			removed = append(removed, v)
+			// 支持两段式参数: --proxy-server socks5://127.0.0.1:1080
+			if i+1 < len(args) {
+				nextRaw := strings.TrimSpace(args[i+1])
+				if nextRaw != "" && !strings.HasPrefix(nextRaw, "--") {
+					removed = append(removed, nextRaw)
+					i++
+				}
+			}
+			continue
+		}
+
+		filtered = append(filtered, v)
+	}
+	return filtered, removed
 }
 
 func (a *App) stopBrowserProcess(cmd *exec.Cmd) error {

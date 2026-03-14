@@ -1,15 +1,20 @@
 package backend
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"os/exec"
+	stdruntime "runtime"
 	"strings"
 	"time"
 )
 
 const browserStartReadyTimeout = 10 * time.Second
 
-func waitBrowserDebugPortReady(debugPort int, timeout time.Duration) error {
+var errBrowserProcessExitedBeforeReady = errors.New("browser process exited before debug port became ready")
+
+func waitBrowserDebugPortReady(debugPort int, cmd *exec.Cmd, timeout time.Duration) error {
 	address := fmt.Sprintf("127.0.0.1:%d", debugPort)
 	deadline := time.Now().Add(timeout)
 
@@ -19,10 +24,28 @@ func waitBrowserDebugPortReady(debugPort int, timeout time.Duration) error {
 			_ = conn.Close()
 			return nil
 		}
+
+		if browserProcessExited(cmd) {
+			return errBrowserProcessExitedBeforeReady
+		}
 		time.Sleep(150 * time.Millisecond)
 	}
 
 	return fmt.Errorf("浏览器进程未在 %s 内完成启动，调试端口 %d 未就绪", timeout.Round(time.Second), debugPort)
+}
+
+func browserProcessExited(cmd *exec.Cmd) bool {
+	if cmd == nil || cmd.Process == nil {
+		return false
+	}
+	if stdruntime.GOOS == "windows" {
+		alive, err := isProcessAliveWindows(cmd.Process.Pid)
+		if err != nil {
+			return false
+		}
+		return !alive
+	}
+	return cmd.ProcessState != nil && cmd.ProcessState.Exited()
 }
 
 func describeChromeProcessStartError(chromeBinaryPath string, err error) string {

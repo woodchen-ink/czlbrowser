@@ -34,3 +34,11 @@ func TestValidateProxyConfigStandardProxy(t *testing.T) {
 		t.Fatalf("expected standard proxy to pass: %s", msg)
 	}
 }
+
+func TestRequiresBridgeStandardProxyWithAuth(t *testing.T) {
+	t.Parallel()
+
+	if !RequiresBridge("socks5://user:pass@127.0.0.1:1080", nil, "") {
+		t.Fatalf("expected socks5 proxy with auth to require bridge")
+	}
+}

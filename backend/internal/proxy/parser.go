@@ -39,6 +39,64 @@ func ParseProxyNode(node string) (string, map[string]interface{}, error) {
 	return "", outbound, nil
 }
 
+func buildAuthBridgeOutboundFromStandardProxy(raw string) (map[string]interface{}, bool) {
+	src := strings.TrimSpace(raw)
+	if src == "" {
+		return nil, false
+	}
+	u, err := url.Parse(src)
+	if err != nil {
+		return nil, false
+	}
+
+	scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
+	if scheme != "socks5" && scheme != "http" {
+		return nil, false
+	}
+	if u.User == nil {
+		return nil, false
+	}
+	username := strings.TrimSpace(u.User.Username())
+	if username == "" {
+		return nil, false
+	}
+
+	host := strings.TrimSpace(u.Hostname())
+	if host == "" {
+		return nil, false
+	}
+	port, err := strconv.Atoi(u.Port())
+	if err != nil || port <= 0 {
+		return nil, false
+	}
+
+	password, _ := u.User.Password()
+	server := map[string]interface{}{
+		"address": host,
+		"port":    port,
+	}
+	server["users"] = []interface{}{
+		map[string]interface{}{
+			"user": username,
+			"pass": password,
+		},
+	}
+
+	protocol := "http"
+	if scheme == "socks5" {
+		protocol = "socks"
+	}
+	outbound := map[string]interface{}{
+		"protocol": protocol,
+		"tag":      "proxy-out",
+		"settings": map[string]interface{}{
+			"servers": []interface{}{server},
+		},
+	}
+
+	return outbound, true
+}
+
 func parseClashNode(src string) (map[string]interface{}, string, error) {
 	data := strings.TrimSpace(src)
 	if strings.HasPrefix(strings.ToLower(data), "clash://") {

@@ -16,7 +16,7 @@ REM ======== 代理配置 ========
 REM 本地代理地址（例如 Clash、V2Ray 等）
 set PROXY_HOST=127.0.0.1
 set PROXY_PORT=7890
-set USE_PROXY=1
+set USE_PROXY=0
 
 REM 如果不需要使用代理，将 USE_PROXY 设置为 0
 REM set USE_PROXY=0
