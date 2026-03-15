@@ -293,6 +293,29 @@ export async function BrowserCoreDownload(coreName: string, url: string, proxyCo
   return true
 }
 
+export interface BuiltinCoreSource {
+  id: string
+  name: string
+  version: string
+  description: string
+  installed: boolean
+}
+
+export async function fetchBuiltinCores(): Promise<BuiltinCoreSource[]> {
+  const bindings: any = await getBindings()
+  if (bindings?.BrowserBuiltinCores) {
+    return (await bindings.BrowserBuiltinCores()) || []
+  }
+  return []
+}
+
+export async function downloadBuiltinCore(builtinId: string, proxyConfig: string): Promise<void> {
+  const bindings: any = await getBindings()
+  if (bindings?.BrowserBuiltinCoreDownload) {
+    await bindings.BrowserBuiltinCoreDownload(builtinId, proxyConfig)
+  }
+}
+
 // ============================================================================
 // Proxy API
 // ============================================================================

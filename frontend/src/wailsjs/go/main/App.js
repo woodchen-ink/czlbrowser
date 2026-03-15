@@ -34,6 +34,14 @@ export function BookmarkSave(arg1) {
   return window['go']['main']['App']['BookmarkSave'](arg1);
 }
 
+export function BrowserBuiltinCoreDownload(arg1, arg2) {
+  return window['go']['main']['App']['BrowserBuiltinCoreDownload'](arg1, arg2);
+}
+
+export function BrowserBuiltinCores() {
+  return window['go']['main']['App']['BrowserBuiltinCores']();
+}
+
 export function BrowserClearCookies(arg1) {
   return window['go']['main']['App']['BrowserClearCookies'](arg1);
 }

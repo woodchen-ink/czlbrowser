@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { FolderOpen, Settings, Edit2 } from 'lucide-react'
+import { FolderOpen, Settings, Edit2, Download, CheckCircle } from 'lucide-react'
 import { Badge, Button, Card, ConfirmModal, FormItem, Input, Modal, Table, Textarea, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
 import type { BrowserCore, BrowserCoreInput, BrowserCoreValidateResult, BrowserSettings, BrowserCoreExtended, BrowserProxy } from '../types'
-import { fetchBrowserCores, saveBrowserCore, deleteBrowserCore, setDefaultBrowserCore, validateBrowserCorePath, openCorePath, fetchBrowserSettings, saveBrowserSettings, fetchCoreExtendedInfo, scanBrowserCores, BrowserCoreDownload, fetchBrowserProxies } from '../api'
-import { EventsOn, EventsOff, BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
+import { fetchBrowserCores, saveBrowserCore, deleteBrowserCore, setDefaultBrowserCore, validateBrowserCorePath, openCorePath, fetchBrowserSettings, saveBrowserSettings, fetchCoreExtendedInfo, scanBrowserCores, fetchBrowserProxies, fetchBuiltinCores, downloadBuiltinCore, type BuiltinCoreSource } from '../api'
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 
 interface CoreDisplayInfo {
   coreId: string
@@ -53,9 +53,11 @@ export function CoreManagementPage() {
 
   // 内核下载
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
-  const [downloadForm, setDownloadForm] = useState({ name: '', url: '', proxyMode: 'system', proxyId: '' })
+  const [downloadForm, setDownloadForm] = useState({ proxyMode: 'system', proxyId: '' })
   const [downloadProgress, setDownloadProgress] = useState<{ phase: string; progress: number; message: string } | null>(null)
   const [proxies, setProxies] = useState<BrowserProxy[]>([])
+  const [builtinCores, setBuiltinCores] = useState<BuiltinCoreSource[]>([])
+  const [downloadingBuiltinId, setDownloadingBuiltinId] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -68,11 +70,13 @@ export function CoreManagementPage() {
         setTimeout(() => {
           setDownloadModalOpen(false)
           setDownloadProgress(null)
+          setDownloadingBuiltinId(null)
           loadData() // 更新内核列表
         }, 1500)
       } else if (data.phase === 'error') {
         toast.error(data.message)
-        setDownloadProgress(null) // 清理进度使其可以重新开始
+        setDownloadProgress(null)
+        setDownloadingBuiltinId(null)
       }
     }
     EventsOn('download:progress', onDownloadProgress)
@@ -85,12 +89,14 @@ export function CoreManagementPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // 并行加载设置、内核列表和扩展信息
-      const [settingsData, coreList, extendedInfo] = await Promise.all([
+      // 并行加载设置、内核列表、扩展信息和内置内核
+      const [settingsData, coreList, extendedInfo, builtinList] = await Promise.all([
         fetchBrowserSettings(),
         fetchBrowserCores(),
         fetchCoreExtendedInfo(),
+        fetchBuiltinCores(),
       ])
+      setBuiltinCores(builtinList)
 
       setSettings(settingsData)
       setCores(coreList)
@@ -310,36 +316,24 @@ export function CoreManagementPage() {
     }
   }
 
-  // 开始下载
-  const handleStartDownloadCore = async () => {
-    if (!downloadForm.name.trim() || !downloadForm.url.trim()) {
-      toast.error('请输入名称和下载地址')
-      return
-    }
-    if (cores.some(c => c.coreName.toLowerCase() === downloadForm.name.trim().toLowerCase())) {
-      toast.error('该内核名称已存在')
-      return
-    }
+  // 获取当前代理配置
+  const resolveProxyConfig = (): string => {
+    if (downloadForm.proxyMode === 'system') return '__system__'
+    if (downloadForm.proxyMode === 'direct') return '__direct__'
+    const proxyProfile = proxies.find(p => p.proxyId === downloadForm.proxyId)
+    return proxyProfile?.proxyConfig || downloadForm.proxyId
+  }
+
+  // 下载内置内核
+  const handleDownloadBuiltinCore = async (builtinId: string) => {
+    setDownloadingBuiltinId(builtinId)
     setDownloadProgress({ phase: 'starting', progress: 0, message: '准备下载...' })
     try {
-      // 在这儿我们需要从 proxies 中寻找匹配到的代理设定，如果有则传过去的 url
-      let targetProxy = ''
-      if (downloadForm.proxyMode === 'system') {
-        targetProxy = '__system__'
-      } else if (downloadForm.proxyMode === 'direct') {
-        targetProxy = '__direct__'
-      } else {
-        const proxyProfile = proxies.find(p => p.proxyId === downloadForm.proxyId)
-        targetProxy = downloadForm.proxyId
-        if (proxyProfile && proxyProfile.proxyConfig) {
-          targetProxy = proxyProfile.proxyConfig
-        }
-      }
-
-      await BrowserCoreDownload(downloadForm.name.trim(), downloadForm.url.trim(), targetProxy)
+      await downloadBuiltinCore(builtinId, resolveProxyConfig())
     } catch (err: any) {
-      toast.error(err.message || '内部启动下载失败')
+      toast.error(err.message || '启动下载失败')
       setDownloadProgress(null)
+      setDownloadingBuiltinId(null)
     }
   }
 
@@ -550,45 +544,44 @@ export function CoreManagementPage() {
         }
         setDownloadModalOpen(false)
         setDownloadProgress(null)
-      }} title="下载内核" width="480px"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => {
-              if (downloadProgress && downloadProgress.phase !== 'done' && downloadProgress.phase !== 'error') return;
-              setDownloadModalOpen(false)
-            }} disabled={downloadProgress !== null && downloadProgress.phase !== 'error'}>取消</Button>
-            <Button onClick={handleStartDownloadCore} loading={downloadProgress !== null && downloadProgress.phase !== 'error'}>开始下载</Button>
-          </>
-        }>
+        setDownloadingBuiltinId(null)
+      }} title="下载内核" width="520px">
         <div className="space-y-4">
-          <FormItem label="内核名称" required>
-            <Input
-              value={downloadForm.name}
-              onChange={e => setDownloadForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="例如: chrome-139"
-              disabled={downloadProgress !== null}
-            />
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">该名称将同时作为数据存放的子文件夹名。</p>
-          </FormItem>
-          <FormItem label="下载地址 (ZIP)" required>
-            <Input
-              value={downloadForm.url}
-              onChange={e => setDownloadForm(prev => ({ ...prev, url: e.target.value }))}
-              placeholder="https://github.com/.../release.zip"
-              disabled={downloadProgress !== null}
-            />
-            <div className="text-xs text-[var(--color-text-muted)] mt-2 flex items-center justify-between bg-[var(--color-bg-muted)] p-2 rounded">
-              <span>推荐指纹内核: fingerprint-chromium</span>
-              <button
-                type="button"
-                onClick={() => BrowserOpenURL('https://github.com/adryfish/fingerprint-chromium/releases')}
-                className="text-[var(--color-accent)] hover:underline cursor-pointer font-medium"
-              >
-                前往 Releases 页面获取链接
-              </button>
-            </div>
-          </FormItem>
+          {/* 内置内核列表 */}
+          <div className="space-y-2">
+            {builtinCores.map(core => (
+              <div key={core.id} className="flex items-center justify-between p-3 border border-[var(--color-border-default)] rounded-md bg-[var(--color-bg-primary)]">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">{core.name}</span>
+                    <Badge variant="default">{core.version}</Badge>
+                    {core.installed && <Badge variant="success">已安装</Badge>}
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{core.description}</p>
+                </div>
+                <div className="ml-3 flex-shrink-0">
+                  {core.installed ? (
+                    <Button size="sm" variant="ghost" disabled>
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      已安装
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => handleDownloadBuiltinCore(core.id)}
+                      loading={downloadingBuiltinId === core.id}
+                      disabled={downloadProgress !== null}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      下载
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
 
+          {/* 代理设置 */}
           <FormItem label="下载代理设置">
             <select
               value={downloadForm.proxyMode}
@@ -626,8 +619,9 @@ export function CoreManagementPage() {
             </FormItem>
           )}
 
+          {/* 下载进度 */}
           {downloadProgress && (
-            <div className="mt-4 p-4 border border-[var(--color-border-default)] rounded-lg bg-[var(--color-bg-secondary)]">
+            <div className="p-4 border border-[var(--color-border-default)] rounded-md bg-[var(--color-bg-secondary)]">
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium text-[var(--color-text-primary)]">{downloadProgress.message}</span>
                 <span className="text-[var(--color-text-muted)]">{downloadProgress.progress}%</span>

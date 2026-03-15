@@ -145,4 +145,4 @@ echo.
 REM 清理代理配置
 call :cleanup
 
-pause
+exit /b 0

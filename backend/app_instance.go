@@ -159,6 +159,8 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		"--disable-session-crashed-bubble",
 		"--hide-crash-restore-bubble",
 		"--no-default-browser-check",
+		// 禁用密码保存提示（减少 UI 干扰）
+		"--disable-save-password-bubble",
 	}
 
 	hasFingerprint := false
@@ -188,8 +190,13 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	args = append(args, profile.FingerprintArgs...)
 	args = append(args, profile.LaunchArgs...)
 	args = append(args, normalizeNonEmptyStrings(extraLaunchArgs)...)
-	args = a.applyProxyLocaleArgs(args, profile.ProxyId, resolvedProxyConfig, proxies, log, profileId)
+	var proxyTimezone string
+	args, proxyTimezone = a.applyProxyLocaleArgs(args, profile.ProxyId, resolvedProxyConfig, proxies, log, profileId)
 	args = autoFillWebGLArgs(args, log, profileId)
+	// 有代理时，若用户未配置 WebRTC 策略，则强制禁用非代理 UDP 防止真实 IP 泄露
+	if effectiveProxy != "" && effectiveProxy != "direct://" {
+		args = upsertKeyValueArg(args, "--webrtc-ip-handling-policy", "disable_non_proxied_udp")
+	}
 
 	if normalizedURLs := normalizeNonEmptyStrings(startURLs); len(normalizedURLs) > 0 {
 		args = append(args, normalizedURLs...)
@@ -203,6 +210,11 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	cmd := exec.Command(chromeBinaryPath, args...)
 	// 注意：不对 Chrome 进程调用 hideWindow——Chrome 是 GUI 程序，HideWindow 会导致浏览器窗口不可见
 	cmd.Dir = filepath.Dir(chromeBinaryPath)
+	// 通过 TZ 环境变量在进程级别覆盖时区，对所有标签页生效（比 CDP per-target 更可靠）
+	if proxyTimezone != "" {
+		cmd.Env = append(os.Environ(), "TZ="+proxyTimezone)
+		log.Info("设置浏览器进程时区环境变量", logger.F("profile_id", profileId), logger.F("TZ", proxyTimezone))
+	}
 	stderrCapture := newCappedLogBuffer(64 * 1024)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = stderrCapture
@@ -242,6 +254,9 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "browser:instance:started", profileId)
 	}
+
+	// 异步注入 stealth 脚本（navigator.webdriver 等反检测补丁）+ 时区覆盖
+	go injectStealthScripts(debugPort, log, profileId, proxyTimezone)
 
 	go a.waitBrowserProcess(profileId, cmd)
 	return profile, nil
@@ -556,13 +571,15 @@ func (a *App) cleanupFailedBrowserStart(cmd *exec.Cmd) error {
 	return nil
 }
 
-func (a *App) applyProxyLocaleArgs(args []string, proxyID string, resolvedProxyConfig string, proxies []browser.Proxy, log *logger.Logger, profileID string) []string {
+// applyProxyLocaleArgs 根据代理出口 IP 的地理信息设置语言参数，并返回解析到的 IANA 时区标识。
+// 时区不再通过 --timezone 启动参数设置（标准 Chromium 不支持），改为通过 CDP Emulation.setTimezoneOverride 覆盖。
+func (a *App) applyProxyLocaleArgs(args []string, proxyID string, resolvedProxyConfig string, proxies []browser.Proxy, log *logger.Logger, profileID string) ([]string, string) {
 	proxyID = strings.TrimSpace(proxyID)
 	if proxyID == "" {
-		return args
+		return args, ""
 	}
 	if strings.EqualFold(strings.TrimSpace(resolvedProxyConfig), "direct://") {
-		return args
+		return args, ""
 	}
 
 	timezone, countryCode, ok := a.resolveProxyLocale(proxyID, proxies)
@@ -571,15 +588,14 @@ func (a *App) applyProxyLocaleArgs(args []string, proxyID string, resolvedProxyC
 			logger.F("profile_id", profileID),
 			logger.F("proxy_id", proxyID),
 		)
-		return args
+		return args, ""
 	}
 	language := defaultLanguageByCountryCode(countryCode)
 	if language == "" {
 		language = "en-US"
 	}
 
-	updated := upsertKeyValueArg(args, "--timezone", timezone)
-	updated = upsertKeyValueArg(updated, "--lang", language)
+	updated := upsertKeyValueArg(args, "--lang", language)
 	log.Info("按代理出口自动设置时区与语言",
 		logger.F("profile_id", profileID),
 		logger.F("proxy_id", proxyID),
@@ -587,7 +603,7 @@ func (a *App) applyProxyLocaleArgs(args []string, proxyID string, resolvedProxyC
 		logger.F("language", language),
 		logger.F("country_code", countryCode),
 	)
-	return updated
+	return updated, timezone
 }
 
 func (a *App) resolveProxyLocale(proxyID string, proxies []browser.Proxy) (string, string, bool) {

@@ -1,5 +1,25 @@
 export namespace backend {
 	
+	export class BuiltinCoreSource {
+	    id: string;
+	    name: string;
+	    version: string;
+	    description: string;
+	    installed: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new BuiltinCoreSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.description = source["description"];
+	        this.installed = source["installed"];
+	    }
+	}
 	export class CookieInfo {
 	    name: string;
 	    value: string;

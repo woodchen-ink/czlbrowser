@@ -7,7 +7,7 @@ import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import yaml from 'js-yaml'
 
 // 内置代理 ID，不可删除、不可编辑
-const BUILTIN_PROXY_IDS = new Set(['__direct__', '__local__'])
+const BUILTIN_PROXY_IDS = new Set(['__direct__'])
 const PROXY_LATENCY_CACHE_KEY = 'browser:proxyPool:latencyMap:v1'
 const PROXY_IP_HEALTH_CACHE_KEY = 'browser:proxyPool:ipHealthMap:v1'
 const PROXY_SOURCE_IGNORED_NAMES_KEY = 'browser:proxyPool:sourceIgnoredProxyNames:v1'
@@ -18,7 +18,6 @@ const PROXY_IP_HEALTH_CACHE_TTL_MS = 12 * 60 * 60 * 1000
 
 const BUILTIN_PROXIES: BrowserProxy[] = [
   { proxyId: '__direct__', proxyName: '直连（不走代理）', proxyConfig: 'direct://' },
-  { proxyId: '__local__', proxyName: '本地代理', proxyConfig: 'http://127.0.0.1:7890' },
 ]
 
 function ensureBuiltinProxies(proxies: BrowserProxy[]): BrowserProxy[] {
