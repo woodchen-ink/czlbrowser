@@ -1,24 +1,18 @@
 package proxy
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/http"
-	"net/netip"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter"
-	C "github.com/metacubex/mihomo/constant"
-	"gopkg.in/yaml.v3"
-
 	"ant-chrome/backend/internal/config"
 	"ant-chrome/backend/internal/logger"
-)
 
-// ─── Clash 标准测速 URL ───
-// 使用 HTTP 与 Clash 客户端保持一致
+	xproxy "golang.org/x/net/proxy"
+)
 
 const defaultTestURL = "https://www.google.com/generate_204"
 
@@ -34,17 +28,12 @@ var DefaultSpeedTestConfig = SpeedTestConfig{
 	TCPTimeout: 5 * time.Second,
 }
 
-// ─── 对外入口 ───
-
-// SpeedTest 使用 mihomo 代理适配器进行测速。
-// 采用 unified-delay 策略：先建立连接（预热），再单独计时 HTTP 往返，
-// 与 Clash 客户端 unified-delay: true 的延迟结果一致。
-// 对于 URI 格式代理（vmess://、vless:// 等），通过 Xray/Sing-Box 桥接测速。
+// SpeedTest 对 socks5/http 代理进行 HTTP 延迟测速。
+// 禁用 keep-alive，每次请求走完整链路（TCP 连接 → TLS → HTTP），测出真实代理延迟。
+// 不支持的代理格式直接降级到 TCP ping。
 func SpeedTest(
 	proxyId string,
 	proxies []config.BrowserProxy,
-	xrayMgr *XrayManager,
-	singboxMgr *SingBoxManager,
 	cfg *SpeedTestConfig,
 ) TestResult {
 	log := logger.New("SpeedTest")
@@ -75,62 +64,17 @@ func SpeedTest(
 		testURL = cfg.URLs[0]
 	}
 
-	// 将代理配置转换为 mihomo mapping
-	mapping, err := proxyConfigToMapping(src)
+	// 构建 HTTP 客户端（仅支持 socks5/http/https，禁用 keep-alive）
+	client, err := buildSimpleProxyHTTPClient(src, cfg.Timeout)
 	if err != nil {
-		log.Debug("代理配置解析为 mihomo mapping 失败，尝试通过桥接测速",
+		log.Debug("HTTP 客户端构建失败，降级到 TCP ping",
 			logger.F("proxy_id", proxyId),
 			logger.F("error", err.Error()),
 		)
-		// 尝试通过 Xray/Sing-Box 桥接进行 HTTP 测速
-		return bridgeSpeedTest(proxyId, src, proxies, xrayMgr, singboxMgr, testURL, cfg.Timeout, log)
+		return tcpPingFallback(proxyId, src, cfg.TCPTimeout, log)
 	}
 
-	// 使用 mihomo adapter.ParseProxy 创建代理实例
-	proxyInstance, err := adapter.ParseProxy(mapping)
-	if err != nil {
-		log.Debug("mihomo 代理创建失败，尝试通过桥接测速",
-			logger.F("proxy_id", proxyId),
-			logger.F("error", err.Error()),
-			logger.F("type", mapping["type"]),
-		)
-		return bridgeSpeedTest(proxyId, src, proxies, xrayMgr, singboxMgr, testURL, cfg.Timeout, log)
-	}
-
-	// unified-delay 测速：分离连接建立和 HTTP 往返计时
-	return unifiedDelayTest(proxyId, proxyInstance, testURL, cfg.Timeout)
-}
-
-// bridgeSpeedTest 通过 Xray/Sing-Box 桥接进行 HTTP 测速，
-// 用于 URI 格式代理无法直接转换为 mihomo mapping 的场景。
-func bridgeSpeedTest(
-	proxyId, src string,
-	proxies []config.BrowserProxy,
-	xrayMgr *XrayManager,
-	singboxMgr *SingBoxManager,
-	testURL string,
-	timeout time.Duration,
-	log *logger.Logger,
-) TestResult {
-	client, err := buildProxyHTTPClient(src, proxyId, proxies, xrayMgr, singboxMgr, timeout)
-	if err != nil {
-		log.Debug("桥接客户端构建失败，降级到 TCP ping",
-			logger.F("proxy_id", proxyId),
-			logger.F("error", err.Error()),
-		)
-		return tcpPingFallback(proxyId, src, 5*time.Second, log)
-	}
-
-	// 预热请求（不计时）
-	warmReq, _ := http.NewRequest(http.MethodHead, testURL, nil)
-	warmReq.Header.Set("User-Agent", "AntChrome/1.0")
-	warmResp, err := client.Do(warmReq)
-	if err != nil {
-		return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("代理连接失败: %v", err)}
-	}
-	warmResp.Body.Close()
-
-	// 计时请求
+	// 直接计时完整请求（TCP + TLS + HTTP）
 	start := time.Now()
 	req, _ := http.NewRequest(http.MethodHead, testURL, nil)
 	req.Header.Set("User-Agent", "AntChrome/1.0")
@@ -149,199 +93,52 @@ func bridgeSpeedTest(
 	return TestResult{ProxyId: proxyId, Ok: true, LatencyMs: latency}
 }
 
-// unifiedDelayTest 模拟 Clash unified-delay 模式：
-// 1. 通过代理建立到目标的 TCP 连接（预热，不计入延迟）
-// 2. 发送第一次 HTTP 请求预热连接（不计入延迟）
-// 3. 在已建立的连接上发送第二次 HTTP 请求，只计这次的 RTT
-// 这样测出的延迟 = 纯 HTTP 往返时间，和 Clash unified-delay: true 一致。
-func unifiedDelayTest(proxyId string, px C.Proxy, testURL string, timeout time.Duration) TestResult {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+// buildSimpleProxyHTTPClient 根据 socks5/http/https 代理 URL 构建 HTTP 客户端。
+// 不支持 Clash YAML、vmess、vless 等复杂格式。
+func buildSimpleProxyHTTPClient(src string, timeout time.Duration) (*http.Client, error) {
+	l := strings.ToLower(strings.TrimSpace(src))
 
-	// 解析目标地址
-	addr, err := urlToMeta(testURL)
-	if err != nil {
-		return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("URL 解析失败: %v", err)}
-	}
-
-	// 步骤 1：通过代理 DialContext 建立连接（预热）
-	conn, err := px.DialContext(ctx, &addr)
-	if err != nil {
-		return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("代理连接失败: %v", err)}
-	}
-	defer conn.Close()
-
-	// 构造复用此连接的 HTTP client
-	transport := &http.Transport{
-		DialContext: func(context.Context, string, string) (net.Conn, error) {
-			return conn, nil
-		},
-		DisableKeepAlives: false,
-	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	defer client.CloseIdleConnections()
-
-	// 步骤 2：第一次请求预热（不计时）
-	req1, _ := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
-	resp1, err := client.Do(req1)
-	if err != nil {
-		return TestResult{ProxyId: proxyId, Ok: false, Error: err.Error()}
-	}
-	resp1.Body.Close()
-
-	// 步骤 3：第二次请求计时（纯 HTTP RTT）
-	start := time.Now()
-	req2, _ := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
-	resp2, err := client.Do(req2)
-	latency := time.Since(start).Milliseconds()
-
-	if err != nil {
-		return TestResult{ProxyId: proxyId, Ok: false, LatencyMs: latency, Error: err.Error()}
-	}
-	resp2.Body.Close()
-
-	if resp2.StatusCode != http.StatusOK && resp2.StatusCode != http.StatusNoContent {
-		return TestResult{ProxyId: proxyId, Ok: false, LatencyMs: latency,
-			Error: fmt.Sprintf("HTTP %d", resp2.StatusCode)}
-	}
-
-	return TestResult{ProxyId: proxyId, Ok: true, LatencyMs: latency}
-}
-
-// urlToMeta 将 URL 转换为 mihomo Metadata
-func urlToMeta(rawURL string) (C.Metadata, error) {
-	var host string
-	var portNum uint16
-	if strings.HasPrefix(rawURL, "https://") {
-		host = rawURL[len("https://"):]
-		portNum = 443
-	} else if strings.HasPrefix(rawURL, "http://") {
-		host = rawURL[len("http://"):]
-		portNum = 80
-	} else {
-		return C.Metadata{}, fmt.Errorf("不支持的 URL scheme")
-	}
-	// 去掉 path
-	if idx := strings.Index(host, "/"); idx >= 0 {
-		host = host[:idx]
-	}
-	// 检查是否有自定义端口
-	if h, p, err := net.SplitHostPort(host); err == nil {
-		host = h
-		fmt.Sscanf(p, "%d", &portNum)
-	}
-
-	meta := C.Metadata{
-		Host:    host,
-		DstPort: portNum,
-	}
-	if addr, err := netip.ParseAddr(host); err == nil {
-		meta.DstIP = addr
-	}
-	return meta, nil
-}
-
-// ─── 代理配置转换为 mihomo mapping ───
-
-func proxyConfigToMapping(src string) (map[string]any, error) {
-	src = strings.TrimSpace(src)
-	l := strings.ToLower(src)
-
-	// http/https 直连代理
-	if strings.HasPrefix(l, "http://") || strings.HasPrefix(l, "https://") {
-		return parseStandardProxy(src, "http")
-	}
-	// socks5 直连代理
 	if strings.HasPrefix(l, "socks5://") {
-		return parseStandardProxy(src, "socks5")
-	}
-
-	// URI 格式（vmess:// vless:// 等）无法直接转 mihomo mapping，返回错误由调用方走桥接
-	if strings.Contains(l, "://") && !strings.Contains(l, "type:") {
-		return nil, fmt.Errorf("URI 格式需要通过桥接测速: %s", l[:min(30, len(l))])
-	}
-
-	// Clash YAML 格式 → 直接解析
-	return parseClashYAMLToMapping(src)
-}
-
-func parseStandardProxy(src string, proxyType string) (map[string]any, error) {
-	rest := src[strings.Index(src, "://")+3:]
-
-	var username, password, hostport string
-	if atIdx := strings.LastIndex(rest, "@"); atIdx >= 0 {
-		userInfo := rest[:atIdx]
-		hostport = rest[atIdx+1:]
-		parts := strings.SplitN(userInfo, ":", 2)
-		username = parts[0]
-		if len(parts) > 1 {
-			password = parts[1]
+		u, err := url.Parse(src)
+		if err != nil {
+			return nil, fmt.Errorf("SOCKS5 地址解析失败: %w", err)
 		}
-	} else {
-		hostport = rest
-	}
-	hostport = strings.SplitN(hostport, "/", 2)[0]
-
-	host, port := splitHostPort(hostport)
-	if host == "" || port == 0 {
-		return nil, fmt.Errorf("无法解析地址: %s", src)
-	}
-
-	mapping := map[string]any{
-		"name":   "speedtest-proxy",
-		"type":   proxyType,
-		"server": host,
-		"port":   port,
-	}
-	if username != "" {
-		mapping["username"] = username
-		mapping["password"] = password
-	}
-	return mapping, nil
-}
-
-func parseClashYAMLToMapping(src string) (map[string]any, error) {
-	var payload interface{}
-	if err := yaml.Unmarshal([]byte(src), &payload); err != nil {
-		return nil, fmt.Errorf("YAML 解析失败: %v", err)
-	}
-
-	node := pickClashNode(payload)
-	if node == nil {
-		return nil, fmt.Errorf("无法提取 Clash 节点")
-	}
-
-	if _, ok := node["name"]; !ok {
-		node["name"] = "speedtest-proxy"
-	}
-
-	return node, nil
-}
-
-func splitHostPort(hostport string) (string, int) {
-	if strings.HasPrefix(hostport, "[") {
-		if idx := strings.LastIndex(hostport, "]:"); idx >= 0 {
-			host := hostport[1:idx]
-			port := 0
-			fmt.Sscanf(hostport[idx+2:], "%d", &port)
-			return host, port
+		if strings.TrimSpace(u.Host) == "" {
+			return nil, fmt.Errorf("SOCKS5 地址解析失败: host 为空")
 		}
-		return strings.Trim(hostport, "[]"), 0
+		var auth *xproxy.Auth
+		if u.User != nil {
+			pass, _ := u.User.Password()
+			auth = &xproxy.Auth{User: u.User.Username(), Password: pass}
+		}
+		dialer, err := xproxy.SOCKS5("tcp", u.Host, auth, xproxy.Direct)
+		if err != nil {
+			return nil, fmt.Errorf("SOCKS5 dialer 创建失败: %w", err)
+		}
+		contextDialer, ok := dialer.(xproxy.ContextDialer)
+		if !ok {
+			return nil, fmt.Errorf("SOCKS5 dialer 不支持 ContextDialer")
+		}
+		transport := &http.Transport{
+			DialContext:       contextDialer.DialContext,
+			DisableKeepAlives: true,
+		}
+		return &http.Client{Transport: transport, Timeout: timeout}, nil
 	}
-	idx := strings.LastIndex(hostport, ":")
-	if idx < 0 {
-		return hostport, 0
+
+	if strings.HasPrefix(l, "http://") || strings.HasPrefix(l, "https://") {
+		proxyURL, err := url.Parse(src)
+		if err != nil {
+			return nil, fmt.Errorf("代理地址解析失败: %w", err)
+		}
+		transport := &http.Transport{
+			Proxy:             http.ProxyURL(proxyURL),
+			DisableKeepAlives: true,
+		}
+		return &http.Client{Transport: transport, Timeout: timeout}, nil
 	}
-	host := hostport[:idx]
-	port := 0
-	fmt.Sscanf(hostport[idx+1:], "%d", &port)
-	return host, port
+
+	return nil, fmt.Errorf("不支持的代理格式（仅支持 socks5/http/https）: %s", l[:min(30, len(l))])
 }
 
 // ─── TCP Ping 降级 ───

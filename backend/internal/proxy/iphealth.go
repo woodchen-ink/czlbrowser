@@ -31,7 +31,9 @@ var ipEchoURLs = []string{
 	"http://ip-api.com/line/?fields=query",
 }
 
-// FetchIPInfo 通过指定代理链路获取出口 IP，再调用 ipinfo.czl.net 查询 IP 信息。
+// FetchIPInfo 获取代理出口 IP 的地理信息。
+// 如果代理配置中的 host 是公网 IP，直接用该 IP 查询，跳过出口 IP 检测；
+// 如果是内网 IP 或域名，则通过代理请求 IP 回显服务获取出口 IP。
 func FetchIPInfo(
 	proxyId string,
 	proxies []config.BrowserProxy,
@@ -51,43 +53,56 @@ func FetchIPInfo(
 		return nil, fmt.Errorf("未找到代理配置")
 	}
 
-	// 步骤 1：通过代理获取出口 IP
-	proxyClient, err := buildProxyHTTPClient(src, proxyId, proxies, xrayMgr, singboxMgr, 20*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("构建代理客户端失败: %w", err)
-	}
-
+	// 尝试从代理配置中直接提取公网 IP，跳过出口 IP 检测
 	exitIP := ""
-	echoErrors := make([]string, 0, len(ipEchoURLs))
-	for _, echoURL := range ipEchoURLs {
-		req, _ := http.NewRequest(http.MethodGet, echoURL, nil)
-		req.Header.Set("User-Agent", "AntChrome/1.0")
-		resp, err := proxyClient.Do(req)
-		if err != nil {
-			log.Debug("IP 回显服务请求失败", logger.F("url", echoURL), logger.F("error", err.Error()))
-			echoErrors = append(echoErrors, fmt.Sprintf("%s: %v", echoURL, err))
-			continue
+	if host := extractProxyHost(src); host != "" {
+		if addr, err := netip.ParseAddr(host); err == nil && isPublicIP(addr) {
+			exitIP = addr.String()
+			log.Debug("从代理配置直接提取公网 IP，跳过出口 IP 检测",
+				logger.F("proxy_id", proxyId),
+				logger.F("ip", exitIP),
+			)
 		}
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if resp.StatusCode == http.StatusOK {
-			exitIP = extractIPAddress(string(body))
-			if exitIP != "" {
-				break
-			}
-			echoErrors = append(echoErrors, fmt.Sprintf("%s: invalid ip response (%s)", echoURL, bodySnippet(body, 80)))
-			continue
-		}
-		echoErrors = append(echoErrors, fmt.Sprintf("%s: HTTP %d", echoURL, resp.StatusCode))
-	}
-	if exitIP == "" {
-		if len(echoErrors) > 0 {
-			return nil, fmt.Errorf("无法通过代理获取出口 IP（%s）", strings.Join(echoErrors, "; "))
-		}
-		return nil, fmt.Errorf("无法通过代理获取出口 IP")
 	}
 
-	// 步骤 2：直接调用 ipinfo.czl.net 查询 IP 信息（不走代理）
+	// 如果无法从配置中提取公网 IP（内网 IP / 域名），走原流程
+	if exitIP == "" {
+		proxyClient, err := buildProxyHTTPClient(src, proxyId, proxies, xrayMgr, singboxMgr, 20*time.Second)
+		if err != nil {
+			return nil, fmt.Errorf("构建代理客户端失败: %w", err)
+		}
+
+		echoErrors := make([]string, 0, len(ipEchoURLs))
+		for _, echoURL := range ipEchoURLs {
+			req, _ := http.NewRequest(http.MethodGet, echoURL, nil)
+			req.Header.Set("User-Agent", "AntChrome/1.0")
+			resp, err := proxyClient.Do(req)
+			if err != nil {
+				log.Debug("IP 回显服务请求失败", logger.F("url", echoURL), logger.F("error", err.Error()))
+				echoErrors = append(echoErrors, fmt.Sprintf("%s: %v", echoURL, err))
+				continue
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				exitIP = extractIPAddress(string(body))
+				if exitIP != "" {
+					break
+				}
+				echoErrors = append(echoErrors, fmt.Sprintf("%s: invalid ip response (%s)", echoURL, bodySnippet(body, 80)))
+				continue
+			}
+			echoErrors = append(echoErrors, fmt.Sprintf("%s: HTTP %d", echoURL, resp.StatusCode))
+		}
+		if exitIP == "" {
+			if len(echoErrors) > 0 {
+				return nil, fmt.Errorf("无法通过代理获取出口 IP（%s）", strings.Join(echoErrors, "; "))
+			}
+			return nil, fmt.Errorf("无法通过代理获取出口 IP")
+		}
+	}
+
+	// 调用 ipinfo.czl.net 查询 IP 地理信息（不走代理）
 	queryBody, _ := json.Marshal(map[string]string{"ip": exitIP})
 	req, _ := http.NewRequest(http.MethodPost, ipInfoQueryURL, bytes.NewReader(queryBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -341,6 +356,31 @@ func parseIPTimezonePayload(body []byte) (string, string, error) {
 		return "", countryCode, fmt.Errorf("timezone missing in lookup response")
 	}
 	return timezone, countryCode, nil
+}
+
+// extractProxyHost 从代理配置 URL 中提取 host 部分（不含端口）。
+// 支持 socks5://user:pass@1.2.3.4:1080、http://1.2.3.4:8080 等标准 URL 格式。
+func extractProxyHost(src string) string {
+	src = strings.TrimSpace(src)
+	l := strings.ToLower(src)
+	if !strings.HasPrefix(l, "socks5://") && !strings.HasPrefix(l, "http://") && !strings.HasPrefix(l, "https://") {
+		return ""
+	}
+	u, err := url.Parse(src)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
+}
+
+// isPublicIP 判断是否为公网 IP（非 loopback、非内网、非保留地址）。
+func isPublicIP(addr netip.Addr) bool {
+	if !addr.IsValid() || addr.IsLoopback() || addr.IsPrivate() ||
+		addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() ||
+		addr.IsMulticast() || addr.IsUnspecified() {
+		return false
+	}
+	return true
 }
 
 func mapStringValue(m map[string]interface{}, key string) string {

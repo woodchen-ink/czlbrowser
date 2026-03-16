@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Card, ConfirmModal, FormItem, Input, Modal, Switch, Table, Textarea, toast } from '../../../shared/components'
+import { Button, Card, ConfirmModal, FormItem, Input, Modal, Table, toast } from '../../../shared/components'
 import type { SortOrder, TableColumn } from '../../../shared/components/Table'
 import type { BrowserProxy, ProxyIPHealthResult } from '../types'
-import { fetchBrowserProxies, fetchBrowserProxyGroups, saveBrowserProxies, browserProxyTestSpeed, browserProxyBatchTestSpeed, browserProxyCheckIPHealth, browserProxyBatchCheckIPHealth, fetchClashImportFromURL } from '../api'
+import { fetchBrowserProxies, fetchBrowserProxyGroups, saveBrowserProxies, browserProxyTestSpeed, browserProxyBatchTestSpeed, browserProxyCheckIPHealth, browserProxyBatchCheckIPHealth } from '../api'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import yaml from 'js-yaml'
 
@@ -10,9 +10,6 @@ import yaml from 'js-yaml'
 const BUILTIN_PROXY_IDS = new Set(['__direct__'])
 const PROXY_LATENCY_CACHE_KEY = 'browser:proxyPool:latencyMap:v1'
 const PROXY_IP_HEALTH_CACHE_KEY = 'browser:proxyPool:ipHealthMap:v1'
-const PROXY_SOURCE_IGNORED_NAMES_KEY = 'browser:proxyPool:sourceIgnoredProxyNames:v1'
-const PROXY_GLOBAL_AUTO_REFRESH_KEY = 'browser:proxyPool:globalAutoRefreshEnabled:v1'
-const PROXY_GLOBAL_REFRESH_INTERVAL_KEY = 'browser:proxyPool:globalRefreshIntervalM:v1'
 const PROXY_LATENCY_CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const PROXY_IP_HEALTH_CACHE_TTL_MS = 12 * 60 * 60 * 1000
 
@@ -30,39 +27,15 @@ function ensureBuiltinProxies(proxies: BrowserProxy[]): BrowserProxy[] {
   return result
 }
 
-interface ClashProxy {
-  name: string
-  type: string
-  server: string
-  port: number
-  [key: string]: any
-}
-
 interface ProxyDisplayInfo {
   proxyId: string
   proxyName: string
   proxyConfig: string
   groupName: string
-  sourceId: string
-  sourceUrl: string
-  sourceAutoRefresh: boolean
-  sourceRefreshIntervalM: number
-  sourceLastRefreshAt: string
   type: string
   server: string
   port: number
   latencyMs?: number
-}
-
-interface URLImportSourceMeta {
-  sourceId: string
-  sourceUrl: string
-  sourceNamePrefix: string
-  sourceGroupName: string
-  sourceDnsServers: string
-  sourceAutoRefresh: boolean
-  sourceRefreshIntervalM: number
-  sourceLastRefreshAt: string
 }
 
 function parseProxyInfo(proxyConfig: string): { type: string; server: string; port: number } {
@@ -79,7 +52,7 @@ function parseProxyInfo(proxyConfig: string): { type: string; server: string; po
     }
   }
   try {
-    const parsed = yaml.load(cfg) as ClashProxy[] | ClashProxy
+    const parsed = yaml.load(cfg) as any
     const proxy = Array.isArray(parsed) ? parsed[0] : parsed
     return { type: proxy?.type || '-', server: proxy?.server || '-', port: proxy?.port || 0 }
   } catch {
@@ -87,53 +60,49 @@ function parseProxyInfo(proxyConfig: string): { type: string; server: string; po
   }
 }
 
-/** 将标准代理 URL (socks5://user:pass@host:port) 转为 Clash YAML 配置 */
-function proxyURLToClashYaml(input: string): { name: string; config: string } | null {
-  const raw = input.trim()
-  if (!raw) return null
-  const match = raw.match(/^([a-zA-Z0-9]+):\/\/(.+)$/)
-  if (!match) return null
-  const scheme = match[1].toLowerCase()
-  const rest = match[2]
+function parseProxyConfig(proxyConfig: string): { proxyType: string; proxyHost: string; proxyPort: string; proxyUser: string; proxyPass: string } {
+  const cfg = proxyConfig.trim()
+  if (cfg === 'direct://') return { proxyType: 'direct', proxyHost: '', proxyPort: '', proxyUser: '', proxyPass: '' }
 
-  if (!['socks5', 'http', 'https'].includes(scheme)) return null
-
-  let username = '', password = '', hostport = ''
-  const atIdx = rest.lastIndexOf('@')
-  if (atIdx >= 0) {
-    const userInfo = rest.slice(0, atIdx)
-    hostport = rest.slice(atIdx + 1)
-    const colonIdx = userInfo.indexOf(':')
-    if (colonIdx >= 0) {
-      username = userInfo.slice(0, colonIdx)
-      password = userInfo.slice(colonIdx + 1)
-    } else {
-      username = userInfo
+  // Try standard URL first
+  const urlMatch = cfg.match(/^(socks5|http|https):\/\//)
+  if (urlMatch) {
+    try {
+      const u = new URL(cfg)
+      return {
+        proxyType: urlMatch[1].toLowerCase(),
+        proxyHost: u.hostname,
+        proxyPort: u.port || '',
+        proxyUser: decodeURIComponent(u.username || ''),
+        proxyPass: decodeURIComponent(u.password || ''),
+      }
+    } catch {
+      return { proxyType: urlMatch[1].toLowerCase(), proxyHost: '', proxyPort: '', proxyUser: '', proxyPass: '' }
     }
-  } else {
-    hostport = rest
   }
 
-  // 去掉尾部 path
-  hostport = hostport.split('/')[0]
-  const parts = hostport.split(':')
-  if (parts.length < 2) return null
-  const port = parseInt(parts[parts.length - 1])
-  const server = parts.slice(0, -1).join(':')
-  if (!server || !port) return null
+  // Try Clash YAML (legacy support)
+  try {
+    const parsed = yaml.load(cfg) as any
+    const proxy = Array.isArray(parsed) ? parsed[0] : parsed
+    if (proxy && typeof proxy === 'object') {
+      return {
+        proxyType: (proxy.type || 'socks5').toLowerCase(),
+        proxyHost: proxy.server || '',
+        proxyPort: String(proxy.port || ''),
+        proxyUser: proxy.username || '',
+        proxyPass: proxy.password || '',
+      }
+    }
+  } catch {}
 
-  const name = `${scheme}-${server}:${port}`
-  const lines = [
-    `- name: "${name}"`,
-    `  type: ${scheme}`,
-    `  server: ${server}`,
-    `  port: ${port}`,
-  ]
-  if (username) lines.push(`  username: "${username}"`)
-  if (password) lines.push(`  password: "${password}"`)
-  if (scheme === 'https') lines.push(`  tls: true`)
+  return { proxyType: 'socks5', proxyHost: '', proxyPort: '', proxyUser: '', proxyPass: '' }
+}
 
-  return { name, config: lines.join('\n') }
+function buildProxyConfig(type: string, host: string, port: string, user: string, pass: string): string {
+  if (type === 'direct') return 'direct://'
+  const auth = user ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''
+  return `${type}://${auth}${host}:${port}`
 }
 
 function toDisplayList(proxies: BrowserProxy[]): ProxyDisplayInfo[] {
@@ -144,345 +113,13 @@ function toDisplayList(proxies: BrowserProxy[]): ProxyDisplayInfo[] {
       proxyName: p.proxyName,
       proxyConfig: p.proxyConfig,
       groupName: p.groupName || '',
-      sourceId: p.sourceId || '',
-      sourceUrl: p.sourceUrl || '',
-      sourceAutoRefresh: !!p.sourceAutoRefresh,
-      sourceRefreshIntervalM: Math.max(0, Number(p.sourceRefreshIntervalM || 0)),
-      sourceLastRefreshAt: p.sourceLastRefreshAt || '',
       ...info,
     }
   })
 }
 
-function proxyToYaml(proxy: ClashProxy): string {
-  return yaml.dump([proxy], { flowLevel: -1, lineWidth: -1 }).trim()
-}
-
-function quoteYamlScalar(value: string): string {
-  const v = value.trim()
-  if (!v) return "''"
-  return `'${v.replace(/'/g, "''")}'`
-}
-
-function normalizeImportedProxyArray(payload: unknown): ClashProxy[] | null {
-  const asArray = (input: unknown): ClashProxy[] => {
-    if (!Array.isArray(input)) return []
-    return input.filter((item): item is ClashProxy => !!item && typeof item === 'object')
-  }
-
-  if (Array.isArray(payload)) {
-    return asArray(payload)
-  }
-  if (!payload || typeof payload !== 'object') {
-    return null
-  }
-
-  const record = payload as Record<string, unknown>
-  if (Array.isArray(record.proxies)) {
-    return asArray(record.proxies)
-  }
-  if (Array.isArray(record.proxy)) {
-    return asArray(record.proxy)
-  }
-  if (Array.isArray(record.Proxy)) {
-    return asArray(record.Proxy)
-  }
-  return null
-}
-
-function normalizeLooseClashImportText(raw: string): string {
-  const normalizedNewline = raw.replace(/\uFEFF/g, '').replace(/\r\n/g, '\n').trim()
-  if (!normalizedNewline) return normalizedNewline
-
-  const lines = normalizedNewline.split('\n')
-  const fixedLines = lines.map(line => {
-    // 容错: -节点名, type: vless, server: ... => - { name: '节点名', type: vless, server: ... }
-    const m = line.match(/^(\s*)-\s*([^,{][^,]*?)\s*,\s*(type\s*:.*)$/i)
-    if (!m) return line
-    const indent = m[1] || ''
-    const name = m[2] || ''
-    const tail = m[3] || ''
-    return `${indent}- { name: ${quoteYamlScalar(name)}, ${tail.trim()} }`
-  })
-
-  const hasProxiesRoot = fixedLines.some(line => /^\s*proxies\s*:/.test(line))
-  if (hasProxiesRoot) {
-    return fixedLines.join('\n')
-  }
-
-  const looksLikeProxyList = fixedLines.some(line => /^\s*-\s*/.test(line))
-  if (!looksLikeProxyList) {
-    return fixedLines.join('\n')
-  }
-
-  const indented = fixedLines.map(line => {
-    if (!line.trim()) return line
-    return `  ${line}`
-  })
-  return `proxies:\n${indented.join('\n')}`
-}
-
-function parseClashImportText(raw: string): ClashProxy[] {
-  const input = raw.trim()
-  if (!input) {
-    throw new Error('请输入 YAML 内容')
-  }
-
-  const attempts = [input]
-  const normalized = normalizeLooseClashImportText(input)
-  if (normalized && normalized !== input) {
-    attempts.push(normalized)
-  }
-
-  let lastError: unknown = null
-  for (const text of attempts) {
-    try {
-      const parsed = yaml.load(text)
-      const proxies = normalizeImportedProxyArray(parsed)
-      if (proxies) {
-        return proxies
-      }
-    } catch (error) {
-      lastError = error
-    }
-  }
-
-  if (lastError && typeof lastError === 'object' && lastError !== null && 'message' in lastError) {
-    throw new Error(String((lastError as { message?: string }).message || '解析失败'))
-  }
-  throw new Error('无效的 YAML 格式，需要包含 proxies 数组')
-}
-
-function parseTimestampMs(value: string): number {
-  const v = (value || '').trim()
-  if (!v) return 0
-  const t = Date.parse(v)
-  return Number.isFinite(t) ? t : 0
-}
-
-function normalizeRefreshIntervalM(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  if (value <= 0) return 0
-  if (value < 5) return 5
-  if (value > 24 * 60) return 24 * 60
-  return Math.round(value)
-}
-
-function sourceHostLabel(sourceURL: string): string {
-  const raw = (sourceURL || '').trim()
-  if (!raw) return ''
-  try {
-    const u = new URL(raw)
-    return u.host || raw
-  } catch {
-    return raw
-  }
-}
-
-function collectURLImportSources(list: BrowserProxy[]): URLImportSourceMeta[] {
-  const sourceMap = new Map<string, URLImportSourceMeta>()
-  for (const item of list) {
-    const sourceId = (item.sourceId || '').trim()
-    const sourceUrl = (item.sourceUrl || '').trim()
-    if (!sourceId || !sourceUrl) continue
-
-    const last = sourceMap.get(sourceId)
-    const currentLastRefreshAt = item.sourceLastRefreshAt || ''
-    if (!last) {
-      sourceMap.set(sourceId, {
-        sourceId,
-        sourceUrl,
-        sourceNamePrefix: (item.sourceNamePrefix || '').trim(),
-        sourceGroupName: (item.groupName || '').trim(),
-        sourceDnsServers: (item.dnsServers || '').trim(),
-        sourceAutoRefresh: !!item.sourceAutoRefresh,
-        sourceRefreshIntervalM: normalizeRefreshIntervalM(Number(item.sourceRefreshIntervalM || 0)),
-        sourceLastRefreshAt: currentLastRefreshAt,
-      })
-      continue
-    }
-
-    if (
-      parseTimestampMs(currentLastRefreshAt) > parseTimestampMs(last.sourceLastRefreshAt) &&
-      currentLastRefreshAt.trim()
-    ) {
-      last.sourceLastRefreshAt = currentLastRefreshAt
-    }
-  }
-  return Array.from(sourceMap.values())
-}
-
 function nextProxyID(): string {
   return `proxy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function resolveImportedProxyName(proxy: ClashProxy, index: number, prefix: string): string {
-  const rawName = (proxy.name || '').trim() || `导入代理 ${index + 1}`
-  return prefix ? `${prefix}-${rawName}` : rawName
-}
-
-function buildRefreshedSourceProxies(
-  parsedProxies: ClashProxy[],
-  oldSourceProxies: BrowserProxy[],
-  meta: URLImportSourceMeta,
-  refreshedAt: string
-): BrowserProxy[] {
-  const exactMap = new Map<string, BrowserProxy[]>()
-  const nameMap = new Map<string, BrowserProxy[]>()
-  for (const item of oldSourceProxies) {
-    const exactKey = `${item.proxyName}|||${item.proxyConfig}`
-    const exactList = exactMap.get(exactKey) || []
-    exactList.push(item)
-    exactMap.set(exactKey, exactList)
-
-    const nameKey = item.proxyName
-    const nameList = nameMap.get(nameKey) || []
-    nameList.push(item)
-    nameMap.set(nameKey, nameList)
-  }
-
-  const pickExisting = (name: string, configText: string): string | null => {
-    const exactKey = `${name}|||${configText}`
-    const exactList = exactMap.get(exactKey)
-    if (exactList && exactList.length > 0) {
-      const item = exactList.shift()
-      if (item?.proxyId) return item.proxyId
-    }
-    const nameList = nameMap.get(name)
-    if (nameList && nameList.length > 0) {
-      const item = nameList.shift()
-      if (item?.proxyId) return item.proxyId
-    }
-    return null
-  }
-
-  const prefix = meta.sourceNamePrefix.trim()
-  const sourceGroupName = meta.sourceGroupName.trim()
-  const sourceDnsServers = meta.sourceDnsServers.trim()
-  const refreshed: BrowserProxy[] = []
-
-  parsedProxies.forEach((proxy, idx) => {
-    const proxyName = resolveImportedProxyName(proxy, idx, prefix)
-    const proxyConfig = proxyToYaml(proxy)
-    const proxyId = pickExisting(proxyName, proxyConfig) || nextProxyID()
-
-    refreshed.push({
-      proxyId,
-      proxyName,
-      proxyConfig,
-      dnsServers: sourceDnsServers || undefined,
-      groupName: sourceGroupName || undefined,
-      sourceId: meta.sourceId,
-      sourceUrl: meta.sourceUrl,
-      sourceNamePrefix: prefix || undefined,
-      sourceAutoRefresh: meta.sourceAutoRefresh,
-      sourceRefreshIntervalM: meta.sourceRefreshIntervalM,
-      sourceLastRefreshAt: refreshedAt,
-    })
-  })
-
-  return refreshed
-}
-
-function readSourceIgnoredProxyNames(): Record<string, string[]> {
-  try {
-    const raw = localStorage.getItem(PROXY_SOURCE_IGNORED_NAMES_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return {}
-    const cleaned: Record<string, string[]> = {}
-    Object.entries(parsed as Record<string, unknown>).forEach(([sourceId, value]) => {
-      if (!sourceId.trim() || !Array.isArray(value)) return
-      const names = value
-        .map(item => (typeof item === 'string' ? item.trim() : ''))
-        .filter(Boolean)
-      if (names.length > 0) {
-        cleaned[sourceId] = names
-      }
-    })
-    return cleaned
-  } catch {
-    return {}
-  }
-}
-
-function writeSourceIgnoredProxyNames(data: Record<string, string[]>) {
-  try {
-    const cleaned: Record<string, string[]> = {}
-    Object.entries(data).forEach(([sourceId, names]) => {
-      const key = sourceId.trim()
-      if (!key || !Array.isArray(names)) return
-      const validNames = names.map(name => (name || '').trim()).filter(Boolean)
-      if (validNames.length > 0) {
-        cleaned[key] = validNames
-      }
-    })
-    localStorage.setItem(PROXY_SOURCE_IGNORED_NAMES_KEY, JSON.stringify(cleaned))
-  } catch {
-    // ignore write failures
-  }
-}
-
-function appendSourceIgnoredProxyNames(sourceId: string, names: string[]) {
-  const sourceKey = sourceId.trim()
-  if (!sourceKey || names.length === 0) return
-  const cleaned = names.map(name => name.trim()).filter(Boolean)
-  if (cleaned.length === 0) return
-
-  const existing = readSourceIgnoredProxyNames()
-  existing[sourceKey] = [...(existing[sourceKey] || []), ...cleaned]
-  writeSourceIgnoredProxyNames(existing)
-}
-
-function applyIgnoredProxyNamesForSource(
-  parsedProxies: ClashProxy[],
-  sourceNamePrefix: string,
-  ignoredProxyNames: string[]
-): ClashProxy[] {
-  if (ignoredProxyNames.length === 0) return parsedProxies
-  const ignoredCounter = new Map<string, number>()
-  ignoredProxyNames.forEach(name => {
-    const key = name.trim()
-    if (!key) return
-    ignoredCounter.set(key, (ignoredCounter.get(key) || 0) + 1)
-  })
-  if (ignoredCounter.size === 0) return parsedProxies
-
-  return parsedProxies.filter((proxy, idx) => {
-    const proxyName = resolveImportedProxyName(proxy, idx, sourceNamePrefix)
-    const count = ignoredCounter.get(proxyName) || 0
-    if (count <= 0) return true
-    if (count === 1) {
-      ignoredCounter.delete(proxyName)
-    } else {
-      ignoredCounter.set(proxyName, count - 1)
-    }
-    return false
-  })
-}
-
-function readGlobalRefreshConfig(): { enabled: boolean; intervalM: number } {
-  try {
-    const rawEnabled = localStorage.getItem(PROXY_GLOBAL_AUTO_REFRESH_KEY)
-    const rawInterval = localStorage.getItem(PROXY_GLOBAL_REFRESH_INTERVAL_KEY)
-    const enabled = rawEnabled === '1'
-    const interval = normalizeRefreshIntervalM(Number(rawInterval || 0))
-    return {
-      enabled,
-      intervalM: interval > 0 ? interval : 60,
-    }
-  } catch {
-    return { enabled: false, intervalM: 60 }
-  }
-}
-
-function writeGlobalRefreshConfig(enabled: boolean, intervalM: number) {
-  try {
-    localStorage.setItem(PROXY_GLOBAL_AUTO_REFRESH_KEY, enabled ? '1' : '0')
-    localStorage.setItem(PROXY_GLOBAL_REFRESH_INTERVAL_KEY, String(intervalM))
-  } catch {
-    // ignore write failures
-  }
 }
 
 function toLatencyValue(ok: boolean, latencyMs: number, error?: string): number {
@@ -577,27 +214,9 @@ export function ProxyPoolPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false)
 
-  const [importModalOpen, setImportModalOpen] = useState(false)
-  const [importUrl, setImportUrl] = useState('')
-  const [importResolvedUrl, setImportResolvedUrl] = useState('')
-  const [importText, setImportText] = useState('')
-  const [importDnsServers, setImportDnsServers] = useState('')
-  const [importNamePrefix, setImportNamePrefix] = useState('')
-  const [importGroupName, setImportGroupName] = useState('')
-  const [previewModalOpen, setPreviewModalOpen] = useState(false)
-  const [previewList, setPreviewList] = useState<ProxyDisplayInfo[]>([])
-  const [removedPreviewProxyNames, setRemovedPreviewProxyNames] = useState<string[]>([])
-  const [importing, setImporting] = useState(false)
-  const [fetchingImportUrl, setFetchingImportUrl] = useState(false)
-  const [refreshingAllSources, setRefreshingAllSources] = useState(false)
-  const [refreshingSourceIds, setRefreshingSourceIds] = useState<Set<string>>(new Set())
-  const [globalAutoRefreshEnabled, setGlobalAutoRefreshEnabled] = useState(false)
-  const [globalRefreshIntervalM, setGlobalRefreshIntervalM] = useState('60')
-
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingProxy, setEditingProxy] = useState<BrowserProxy | null>(null)
-  const [editForm, setEditForm] = useState({ proxyName: '', proxyConfig: '', dnsServers: '', groupName: '' })
-  const [editFormQuickFill, setEditFormQuickFill] = useState('')
+  const [editForm, setEditForm] = useState({ proxyName: '', groupName: '', proxyType: 'socks5', proxyHost: '', proxyPort: '', proxyUser: '', proxyPass: '' })
   const [saving, setSaving] = useState(false)
   const [isAddMode, setIsAddMode] = useState(false)
 
@@ -606,17 +225,8 @@ export function ProxyPoolPage() {
   const [ipHealthDetailOpen, setIPHealthDetailOpen] = useState(false)
   const [currentIPHealthDetail, setCurrentIPHealthDetail] = useState<ProxyIPHealthResult | null>(null)
   const proxiesRef = useRef<BrowserProxy[]>([])
-  const refreshingSourceIdsRef = useRef<Set<string>>(new Set())
-  const autoRefreshRunningRef = useRef(false)
-  const globalRefreshInterval = useMemo(() => {
-    const interval = normalizeRefreshIntervalM(Number(globalRefreshIntervalM || 0))
-    return interval > 0 ? interval : 60
-  }, [globalRefreshIntervalM])
 
   useEffect(() => {
-    const cfg = readGlobalRefreshConfig()
-    setGlobalAutoRefreshEnabled(cfg.enabled)
-    setGlobalRefreshIntervalM(String(cfg.intervalM))
     setLatencyMap(readLatencyCache())
     setIPHealthMap(readIPHealthCache())
     loadProxies()
@@ -631,16 +241,8 @@ export function ProxyPoolPage() {
   }, [ipHealthMap])
 
   useEffect(() => {
-    writeGlobalRefreshConfig(globalAutoRefreshEnabled, globalRefreshInterval)
-  }, [globalAutoRefreshEnabled, globalRefreshInterval])
-
-  useEffect(() => {
     proxiesRef.current = proxies
   }, [proxies])
-
-  useEffect(() => {
-    refreshingSourceIdsRef.current = refreshingSourceIds
-  }, [refreshingSourceIds])
 
   useEffect(() => {
     if (!proxies.length) return
@@ -717,132 +319,6 @@ export function ProxyPoolPage() {
     const grps = await fetchBrowserProxyGroups()
     setGroups(grps)
   }, [])
-
-  const sourceMetas = useMemo(() => collectURLImportSources(proxies), [proxies])
-  const hasURLImportSources = sourceMetas.length > 0
-
-  const refreshSingleSource = useCallback(async (sourceId: string, silent: boolean) => {
-    const currentList = proxiesRef.current
-    const metas = collectURLImportSources(currentList)
-    const meta = metas.find(item => item.sourceId === sourceId)
-    if (!meta) return false
-
-    if (refreshingSourceIdsRef.current.has(sourceId)) return false
-    setRefreshingSourceIds(prev => {
-      const next = new Set(prev)
-      next.add(sourceId)
-      return next
-    })
-
-    try {
-      const result = await fetchClashImportFromURL(meta.sourceUrl)
-      const parsed = parseClashImportText(result.content || '')
-      if (!parsed.length) {
-        throw new Error('订阅内容未解析到可用代理')
-      }
-      const ignoredNameMap = readSourceIgnoredProxyNames()
-      const sourceIgnoredNames = ignoredNameMap[sourceId] || []
-      const filteredParsed = applyIgnoredProxyNamesForSource(parsed, meta.sourceNamePrefix, sourceIgnoredNames)
-
-      const latest = proxiesRef.current
-      const oldSourceProxies = latest.filter(item => (item.sourceId || '').trim() === sourceId)
-      const refreshedAt = new Date().toISOString()
-      const effectiveMeta: URLImportSourceMeta = {
-        ...meta,
-        sourceAutoRefresh: globalAutoRefreshEnabled,
-        sourceRefreshIntervalM: globalRefreshInterval,
-      }
-      const refreshedSourceProxies = buildRefreshedSourceProxies(filteredParsed, oldSourceProxies, effectiveMeta, refreshedAt)
-
-      const merged = latest
-        .filter(item => (item.sourceId || '').trim() !== sourceId)
-        .concat(refreshedSourceProxies)
-
-      await saveProxies(merged)
-      if (!silent) {
-        toast.success(`订阅刷新成功：${meta.sourceUrl}（${refreshedSourceProxies.length} 条）`)
-      }
-      return true
-    } catch (error: any) {
-      if (!silent) {
-        toast.error(error?.message || '订阅刷新失败')
-      }
-      return false
-    } finally {
-      setRefreshingSourceIds(prev => {
-        const next = new Set(prev)
-        next.delete(sourceId)
-        return next
-      })
-    }
-  }, [globalAutoRefreshEnabled, globalRefreshInterval, saveProxies])
-
-  const handleRefreshAllSources = useCallback(async (silent = false) => {
-    const metas = collectURLImportSources(proxiesRef.current)
-    if (metas.length === 0) {
-      if (!silent) {
-        toast.info('当前没有 URL 导入订阅')
-      }
-      return
-    }
-
-    setRefreshingAllSources(true)
-    let successCount = 0
-    for (const meta of metas) {
-      // 串行刷新，避免并发保存导致覆盖
-      // eslint-disable-next-line no-await-in-loop
-      const ok = await refreshSingleSource(meta.sourceId, true)
-      if (ok) successCount += 1
-    }
-    setRefreshingAllSources(false)
-
-    if (!silent) {
-      if (successCount === metas.length) {
-        toast.success(`订阅刷新完成：${successCount}/${metas.length}`)
-      } else {
-        toast.warning(`订阅刷新完成：成功 ${successCount}/${metas.length}`)
-      }
-    }
-  }, [refreshSingleSource])
-
-  useEffect(() => {
-    const runAutoRefresh = async () => {
-      if (autoRefreshRunningRef.current || refreshingAllSources) {
-        return
-      }
-      if (!globalAutoRefreshEnabled) {
-        return
-      }
-      const intervalMs = globalRefreshInterval * 60 * 1000
-      const metas = collectURLImportSources(proxiesRef.current).filter(meta => {
-        if (!meta.sourceUrl.trim()) return false
-        const last = parseTimestampMs(meta.sourceLastRefreshAt)
-        return last <= 0 || Date.now() - last >= intervalMs
-      })
-      if (metas.length === 0) {
-        return
-      }
-
-      autoRefreshRunningRef.current = true
-      try {
-        for (const meta of metas) {
-          // eslint-disable-next-line no-await-in-loop
-          await refreshSingleSource(meta.sourceId, true)
-        }
-      } finally {
-        autoRefreshRunningRef.current = false
-      }
-    }
-
-    void runAutoRefresh()
-    const timer = window.setInterval(() => {
-      void runAutoRefresh()
-    }, 60 * 1000)
-
-    return () => {
-      window.clearInterval(timer)
-    }
-  }, [globalAutoRefreshEnabled, globalRefreshInterval, refreshingAllSources, refreshSingleSource])
 
   const protocolOptions = useMemo(
     () => ['all', ...Array.from(new Set(displayList.map(p => p.type).filter(t => t !== '-')))],
@@ -1121,23 +597,6 @@ export function ProxyPoolPage() {
     },
     { key: 'proxyName', title: '代理名称', width: '180px', sortable: true },
     { key: 'groupName', title: '分组', width: '100px', sortable: true, render: (val) => val ? <span className="px-1.5 py-0.5 text-xs rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)]">{val}</span> : '-' },
-    {
-      key: 'source',
-      title: '来源',
-      width: '180px',
-      render: (_, record) => {
-        if (!record.sourceUrl) return '-'
-        const host = sourceHostLabel(record.sourceUrl)
-        return (
-          <div className="text-xs leading-5">
-            <div className="text-[var(--color-text-primary)] truncate" title={record.sourceUrl}>{host}</div>
-            <div className="text-[var(--color-text-muted)]">
-              {globalAutoRefreshEnabled ? `自动刷新 ${globalRefreshInterval} 分钟（全局）` : '手动刷新'}
-            </div>
-          </div>
-        )
-      },
-    },
     { key: 'type', title: '类型', width: '90px', sortable: true },
     { key: 'server', title: '服务器', width: '180px', sortable: true },
     { key: 'port', title: '端口', width: '80px', sortable: true, render: (val) => val || '-' },
@@ -1157,22 +616,11 @@ export function ProxyPoolPage() {
     {
       key: 'actions',
       title: '操作',
-      width: '320px',
+      width: '260px',
       render: (_, record) => {
         const isBuiltin = BUILTIN_PROXY_IDS.has(record.proxyId)
-        const hasSource = !!record.sourceId && !!record.sourceUrl
         return (
           <div className="flex gap-2">
-            {hasSource && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={(e) => { e.stopPropagation(); void refreshSingleSource(record.sourceId, false) }}
-                loading={refreshingSourceIds.has(record.sourceId)}
-              >
-                刷新订阅
-              </Button>
-            )}
             <Button
               size="sm" variant="ghost"
               onClick={(e) => { e.stopPropagation(); handleTestOne(record) }}
@@ -1203,41 +651,13 @@ export function ProxyPoolPage() {
     },
   ]
 
-  const handleRemovePreviewProxy = (proxyId: string) => {
-    const target = previewList.find(item => item.proxyId === proxyId)
-    if (!target) return
-    setPreviewList(prev => prev.filter(item => item.proxyId !== proxyId))
-    setRemovedPreviewProxyNames(prev => [...prev, target.proxyName])
-  }
-
-  const previewColumns: TableColumn<ProxyDisplayInfo>[] = [
-    { key: 'proxyName', title: '代理名称', width: '200px' },
-    { key: 'type', title: '类型', width: '100px' },
-    { key: 'server', title: '服务器', width: '200px' },
-    { key: 'port', title: '端口', width: '100px', render: (val) => val || '-' },
-    {
-      key: 'actions',
-      title: '操作',
-      width: '96px',
-      render: (_, record) => (
-        <Button
-          size="sm"
-          variant="danger"
-          onClick={() => handleRemovePreviewProxy(record.proxyId)}
-        >
-          删除
-        </Button>
-      ),
-    },
-  ]
-
   const handleEdit = (record: ProxyDisplayInfo) => {
     const proxy = proxies.find(p => p.proxyId === record.proxyId)
     if (proxy) {
       setIsAddMode(false)
       setEditingProxy(proxy)
-      setEditForm({ proxyName: proxy.proxyName, proxyConfig: proxy.proxyConfig, dnsServers: proxy.dnsServers || '', groupName: proxy.groupName || '' })
-      setEditFormQuickFill('')
+      const parsed = parseProxyConfig(proxy.proxyConfig)
+      setEditForm({ proxyName: proxy.proxyName, groupName: proxy.groupName || '', ...parsed })
       setEditModalOpen(true)
     }
   }
@@ -1245,36 +665,24 @@ export function ProxyPoolPage() {
   const handleAddProxy = () => {
     setIsAddMode(true)
     setEditingProxy(null)
-    setEditForm({ proxyName: '', proxyConfig: '', dnsServers: '', groupName: '' })
-    setEditFormQuickFill('')
+    setEditForm({ proxyName: '', groupName: '', proxyType: 'socks5', proxyHost: '', proxyPort: '', proxyUser: '', proxyPass: '' })
     setEditModalOpen(true)
-  }
-
-  const handleQuickFill = () => {
-    const parsed = proxyURLToClashYaml(editFormQuickFill)
-    if (!parsed) {
-      toast.error('无法解析，请输入 socks5://、http:// 或 https:// 格式的代理地址')
-      return
-    }
-    setEditForm(prev => ({
-      ...prev,
-      proxyName: prev.proxyName || parsed.name,
-      proxyConfig: parsed.config,
-    }))
-    toast.success('已填充代理配置')
   }
 
   const handleSaveProxy = async () => {
     if (!editForm.proxyName.trim()) { toast.error('请输入代理名称'); return }
-    if (!editForm.proxyConfig.trim()) { toast.error('请输入代理配置'); return }
+    if (editForm.proxyType !== 'direct') {
+      if (!editForm.proxyHost.trim()) { toast.error('请输入代理主机'); return }
+      if (!editForm.proxyPort.trim()) { toast.error('请输入代理端口'); return }
+    }
+    const proxyConfig = buildProxyConfig(editForm.proxyType, editForm.proxyHost.trim(), editForm.proxyPort.trim(), editForm.proxyUser.trim(), editForm.proxyPass.trim())
     setSaving(true)
     try {
       if (isAddMode) {
         const newProxy: BrowserProxy = {
           proxyId: nextProxyID(),
           proxyName: editForm.proxyName.trim(),
-          proxyConfig: editForm.proxyConfig.trim(),
-          dnsServers: editForm.dnsServers.trim() || undefined,
+          proxyConfig,
           groupName: editForm.groupName.trim() || undefined,
         }
         const allProxies = [...proxies, newProxy]
@@ -1285,7 +693,7 @@ export function ProxyPoolPage() {
         if (!editingProxy) return
         const newProxies = proxies.map(p =>
           p.proxyId === editingProxy.proxyId
-            ? { ...p, proxyName: editForm.proxyName, proxyConfig: editForm.proxyConfig, dnsServers: editForm.dnsServers, groupName: editForm.groupName }
+            ? { ...p, proxyName: editForm.proxyName, proxyConfig, groupName: editForm.groupName }
             : p
         )
         await saveProxies(newProxies)
@@ -1317,128 +725,6 @@ export function ProxyPoolPage() {
     setDeletingId(null)
   }
 
-  const buildImportPreview = (parsedProxies: ClashProxy[]) => {
-    return parsedProxies.map((p, idx) => {
-      const prefix = importNamePrefix.trim()
-      const proxyName = resolveImportedProxyName(p, idx, prefix)
-      return {
-        proxyId: `preview-${idx}`,
-        proxyName,
-        proxyConfig: proxyToYaml(p),
-        groupName: importGroupName.trim(),
-        sourceId: '',
-        sourceUrl: '',
-        sourceAutoRefresh: false,
-        sourceRefreshIntervalM: 0,
-        sourceLastRefreshAt: '',
-        type: p.type || '-',
-        server: p.server || '-',
-        port: p.port || 0,
-      } as ProxyDisplayInfo
-    })
-  }
-
-  const handleFetchImportURL = async () => {
-    const targetURL = importUrl.trim()
-    if (!targetURL) {
-      toast.error('请输入订阅 URL')
-      return
-    }
-
-    setFetchingImportUrl(true)
-    try {
-      const result = await fetchClashImportFromURL(targetURL)
-      const content = (result?.content || '').trim()
-      if (!content) {
-        throw new Error('订阅内容为空')
-      }
-
-      setImportResolvedUrl((result?.url || targetURL).trim())
-      setImportText(content)
-
-      if (!importDnsServers.trim() && typeof result?.dnsServers === 'string' && result.dnsServers.trim()) {
-        setImportDnsServers(result.dnsServers.trim())
-      }
-      if (!importGroupName.trim() && typeof result?.suggestedGroup === 'string' && result.suggestedGroup.trim()) {
-        setImportGroupName(result.suggestedGroup.trim())
-      }
-
-      toast.success(`URL 获取成功，检测到 ${Math.max(0, Number(result?.proxyCount || 0))} 个代理`)
-    } catch (error: any) {
-      setImportResolvedUrl('')
-      toast.error(error?.message || 'URL 获取失败')
-    } finally {
-      setFetchingImportUrl(false)
-    }
-  }
-
-  const handleParseYaml = () => {
-    try {
-      const parsedProxies = parseClashImportText(importText)
-      if (!parsedProxies.length) {
-        toast.error('未解析到可导入代理')
-        return
-      }
-      const preview = buildImportPreview(parsedProxies)
-      setRemovedPreviewProxyNames([])
-      setPreviewList(preview)
-      setImportModalOpen(false)
-      setPreviewModalOpen(true)
-    } catch (error: any) {
-      toast.error(`解析失败: ${error?.message || '未知错误'}`)
-    }
-  }
-
-  const handleConfirmImport = async () => {
-    if (previewList.length === 0) {
-      toast.error('请至少保留 1 个代理后再导入')
-      return
-    }
-    setImporting(true)
-    try {
-      const sourceURL = importResolvedUrl.trim()
-      const isURLImport = !!sourceURL
-      const sourceID = isURLImport ? `src-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : ''
-      const sourceNamePrefix = importNamePrefix.trim()
-      const sourceAutoRefresh = isURLImport ? globalAutoRefreshEnabled : false
-      const sourceRefreshIntervalM = sourceAutoRefresh ? globalRefreshInterval : 0
-      const sourceLastRefreshAt = isURLImport ? new Date().toISOString() : ''
-
-      const newProxies: BrowserProxy[] = previewList.map((p, idx) => ({
-        proxyId: `proxy-${Date.now()}-${idx}`,
-        proxyName: p.proxyName,
-        proxyConfig: p.proxyConfig,
-        dnsServers: importDnsServers.trim() || undefined,
-        groupName: importGroupName.trim() || undefined,
-        sourceId: sourceID || undefined,
-        sourceUrl: sourceURL || undefined,
-        sourceNamePrefix: sourceNamePrefix || undefined,
-        sourceAutoRefresh,
-        sourceRefreshIntervalM,
-        sourceLastRefreshAt: sourceLastRefreshAt || undefined,
-      }))
-      const allProxies = [...proxies, ...newProxies]
-      await saveProxies(allProxies)
-      if (isURLImport && removedPreviewProxyNames.length > 0) {
-        appendSourceIgnoredProxyNames(sourceID, removedPreviewProxyNames)
-      }
-      setPreviewModalOpen(false)
-      setImportUrl('')
-      setImportResolvedUrl('')
-      setImportText('')
-      setImportDnsServers('')
-      setImportNamePrefix('')
-      setImportGroupName('')
-      setPreviewList([])
-      setRemovedPreviewProxyNames([])
-      toast.success(`成功导入 ${newProxies.length} 个代理`)
-    } catch (error: any) {
-      toast.error(error?.message || '导入失败')
-    } finally {
-      setImporting(false)
-    }
-  }
-
   const selectedCount = selectedIds.size
 
   return (
@@ -1446,21 +732,11 @@ export function ProxyPoolPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">代理池配置</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">管理 Clash VPN 代理，供实例绑定使用</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">管理代理配置，供实例绑定使用</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => void handleRefreshAllSources(false)}
-            loading={refreshingAllSources}
-            disabled={!hasURLImportSources}
-          >
-            刷新订阅
-          </Button>
           <Button size="sm" variant="secondary" onClick={handleCheckAllIPHealth} loading={checkingAllIPHealth} disabled={filteredList.length === 0}>IP 分析</Button>
           <Button size="sm" variant="secondary" onClick={handleTestAll} loading={testingAll} disabled={filteredList.length === 0}>测试全部</Button>
-          <Button size="sm" variant="secondary" onClick={() => setImportModalOpen(true)}>导入 Clash</Button>
           <Button size="sm" onClick={handleAddProxy}>新增代理</Button>
         </div>
       </div>
@@ -1493,23 +769,6 @@ export function ProxyPoolPage() {
           {(filterProtocol !== 'all' || filterKeyword || filterGroup !== 'all') && (
             <Button size="sm" variant="ghost" onClick={() => { setFilterProtocol('all'); setFilterKeyword(''); setFilterGroup('all') }}>清除筛选</Button>
           )}
-          <div className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 py-1.5">
-            <span className="text-xs text-[var(--color-text-muted)]">全局自动刷新</span>
-            <Switch
-              checked={globalAutoRefreshEnabled}
-              onChange={(checked) => setGlobalAutoRefreshEnabled(checked)}
-            />
-            <Input
-              type="number"
-              min={5}
-              max={1440}
-              value={globalRefreshIntervalM}
-              onChange={e => setGlobalRefreshIntervalM(e.target.value)}
-              className="w-24"
-              disabled={!globalAutoRefreshEnabled}
-            />
-            <span className="text-xs text-[var(--color-text-muted)]">分钟</span>
-          </div>
           <div className="flex-1" />
           {filteredList.length > 0 && (
             <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] cursor-pointer select-none">
@@ -1534,7 +793,7 @@ export function ProxyPoolPage() {
           data={filteredList}
           rowKey="proxyId"
           loading={loading}
-          emptyText="暂无代理配置，点击上方按钮添加或导入"
+          emptyText="暂无代理配置，点击上方按钮添加"
           sortColumn={sortColumn}
           sortOrder={sortOrder}
           onSort={({ column, order }) => {
@@ -1544,125 +803,49 @@ export function ProxyPoolPage() {
         />
       </Card>
 
-      <Modal open={importModalOpen} onClose={() => setImportModalOpen(false)} title="导入 Clash 代理配置" width="600px"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setImportModalOpen(false)} disabled={fetchingImportUrl}>取消</Button>
-            <Button onClick={handleParseYaml} disabled={fetchingImportUrl || !importText.trim()}>解析</Button>
-          </>
-        }>
-        <div className="space-y-4">
-          <p className="text-sm text-[var(--color-text-muted)]">支持粘贴 Clash YAML，或通过订阅 URL 自动拉取并解析（含 proxies、dns、proxy-groups）</p>
-          <FormItem label="订阅 URL（可选）">
-            <div className="flex gap-2">
-              <Input
-                value={importUrl}
-                onChange={e => {
-                  const next = e.target.value
-                  setImportUrl(next)
-                  if (importResolvedUrl.trim() && next.trim() !== importResolvedUrl.trim()) {
-                    setImportResolvedUrl('')
-                  }
-                }}
-                placeholder="https://example.com/clash/subscription"
-                className="flex-1"
-              />
-              <Button
-                variant="secondary"
-                onClick={handleFetchImportURL}
-                loading={fetchingImportUrl}
-                disabled={!importUrl.trim()}
-              >
-                从 URL 获取
-              </Button>
-            </div>
-            {importResolvedUrl.trim() && (
-              <p className="text-xs text-[var(--color-success)] mt-1 break-all">
-                已绑定订阅：{importResolvedUrl}
-              </p>
-            )}
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">获取成功后会自动回填 YAML 文本，并尝试自动填充 DNS 与建议分组；自动刷新时间请在列表顶部统一配置</p>
-          </FormItem>
-          <Textarea value={importText} onChange={e => setImportText(e.target.value)} rows={12}
-            placeholder={`proxies:\n  - name: vless-v6\n    type: vless\n    server: example.com\n    port: 443\n    uuid: your-uuid\n    ...`} />
-          <FormItem label="分组名称（可选）">
-            <Input
-              value={importGroupName}
-              onChange={e => setImportGroupName(e.target.value)}
-              placeholder="例如：香港、美国、机场A"
-              list="proxy-groups-datalist"
-            />
-            {groups.length > 0 && (
-              <datalist id="proxy-groups-datalist">
-                {groups.map(g => <option key={g} value={g} />)}
-              </datalist>
-            )}
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">填写后本次导入的代理将归入该分组，可按分组筛选</p>
-          </FormItem>
-          <FormItem label="名称前缀（可选）">
-            <Input
-              value={importNamePrefix}
-              onChange={e => setImportNamePrefix(e.target.value)}
-              placeholder="例如：HK、US、机场A"
-            />
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              填写后代理名称将变为 <code className="px-1 bg-[var(--color-bg-secondary)] rounded">前缀-原名称</code>，留空则保持原名
-            </p>
-          </FormItem>
-          <FormItem label="批量 DNS 配置（可选）">
-            <Textarea value={importDnsServers} onChange={e => setImportDnsServers(e.target.value)} rows={5}
-              placeholder={`dns:\n  enable: true\n  nameserver:\n    - 119.29.29.29\n    - 223.5.5.5`} />
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">留空则不配置 DNS，填写后将应用到本次导入的所有代理</p>
-          </FormItem>
-        </div>
-      </Modal>
-
-      <Modal open={previewModalOpen} onClose={() => setPreviewModalOpen(false)} title="确认导入以下代理" width="700px"
-        footer={<><Button variant="secondary" onClick={() => { setPreviewModalOpen(false); setImportModalOpen(true) }}>返回修改</Button><Button onClick={handleConfirmImport} loading={importing} disabled={previewList.length === 0}>确认导入</Button></>}>
-        <div className="space-y-3">
-          {importDnsServers.trim() && (
-            <p className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-secondary)] px-3 py-2 rounded">已配置批量 DNS，将应用到以下所有代理</p>
-          )}
-          <p className="text-xs text-[var(--color-text-muted)]">
-            保留 {previewList.length} 条，删除 {removedPreviewProxyNames.length} 条。删除项不会进入后续比较环节。
-          </p>
-          <Table columns={previewColumns} data={previewList} rowKey="proxyId" maxHeight="380px" emptyText="无代理数据" />
-        </div>
-      </Modal>
-
       <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title={isAddMode ? '新增代理' : '编辑代理'} width="500px"
         footer={<><Button variant="secondary" onClick={() => setEditModalOpen(false)}>取消</Button><Button onClick={handleSaveProxy} loading={saving}>{isAddMode ? '添加' : '保存'}</Button></>}>
         <div className="space-y-4">
-          <FormItem label="快速填充" hint="粘贴代理地址自动解析为配置">
-            <div className="flex gap-2">
-              <Input
-                value={editFormQuickFill}
-                onChange={e => setEditFormQuickFill(e.target.value)}
-                placeholder="socks5://user:pass@host:port"
-                className="flex-1"
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQuickFill() } }}
-              />
-              <Button variant="secondary" onClick={handleQuickFill} disabled={!editFormQuickFill.trim()}>填充</Button>
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">支持 socks5://、http://、https:// 格式，填充后可手动修改</p>
-          </FormItem>
           <FormItem label="代理名称" required>
-            <Input value={editForm.proxyName} onChange={e => setEditForm(prev => ({ ...prev, proxyName: e.target.value }))} placeholder="例如：香港节点" />
+            <Input value={editForm.proxyName} onChange={e => setEditForm(prev => ({ ...prev, proxyName: e.target.value }))} placeholder="例如：美国节点" />
           </FormItem>
-          <FormItem label="分组名称（可选）">
-            <Input value={editForm.groupName} onChange={e => setEditForm(prev => ({ ...prev, groupName: e.target.value }))} placeholder="例如：香港、美国" list="edit-proxy-groups-datalist" />
+          <FormItem label="分组名称">
+            <Input value={editForm.groupName} onChange={e => setEditForm(prev => ({ ...prev, groupName: e.target.value }))} placeholder="例如：亚马逊" list="edit-proxy-groups-datalist" />
             <datalist id="edit-proxy-groups-datalist">
               {groups.map(g => <option key={g} value={g} />)}
             </datalist>
           </FormItem>
-          <FormItem label="代理配置" required>
-            <Textarea value={editForm.proxyConfig} onChange={e => setEditForm(prev => ({ ...prev, proxyConfig: e.target.value }))} rows={10} placeholder="Clash YAML 格式配置" />
+          <FormItem label="代理类型" required>
+            <select
+              value={editForm.proxyType}
+              onChange={e => setEditForm(prev => ({ ...prev, proxyType: e.target.value }))}
+              className="w-full px-3 py-1.5 text-sm rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+            >
+              <option value="socks5">Socks5</option>
+              <option value="http">HTTP</option>
+              <option value="https">HTTPS</option>
+            </select>
           </FormItem>
-          <FormItem label="DNS 服务器（可选）">
-            <Textarea value={editForm.dnsServers} onChange={e => setEditForm(prev => ({ ...prev, dnsServers: e.target.value }))} rows={6}
-              placeholder={`dns:\n  enable: true\n  nameserver:\n    - 119.29.29.29\n    - 223.5.5.5`} />
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">支持 Clash dns: YAML 格式，留空则使用系统默认 DNS</p>
-          </FormItem>
+          {editForm.proxyType !== 'direct' && (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <FormItem label="代理主机" required className="col-span-2">
+                  <Input value={editForm.proxyHost} onChange={e => setEditForm(prev => ({ ...prev, proxyHost: e.target.value }))} placeholder="IP 或域名" />
+                </FormItem>
+                <FormItem label="端口" required>
+                  <Input type="number" value={editForm.proxyPort} onChange={e => setEditForm(prev => ({ ...prev, proxyPort: e.target.value }))} placeholder="端口" />
+                </FormItem>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormItem label="账号">
+                  <Input value={editForm.proxyUser} onChange={e => setEditForm(prev => ({ ...prev, proxyUser: e.target.value }))} placeholder="可选" />
+                </FormItem>
+                <FormItem label="密码">
+                  <Input type="password" value={editForm.proxyPass} onChange={e => setEditForm(prev => ({ ...prev, proxyPass: e.target.value }))} placeholder="可选" />
+                </FormItem>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
