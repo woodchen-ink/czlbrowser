@@ -438,7 +438,7 @@ export async function browserProxyCheckIPHealth(proxyId: string): Promise<ProxyI
     return (await bindings.BrowserProxyCheckIPHealth(proxyId)) || {
       proxyId,
       ok: false,
-      source: 'ipinfo.czl.net',
+      source: 'ip.czl.net',
       error: '调用失败',
       ip: '',
       country: '',
@@ -458,7 +458,7 @@ export async function browserProxyCheckIPHealth(proxyId: string): Promise<ProxyI
   return {
     proxyId,
     ok: true,
-    source: 'ipinfo.czl.net',
+    source: 'ip.czl.net',
     error: '',
     ip: '127.0.0.1',
     country: 'Mock',
@@ -484,7 +484,7 @@ export async function browserProxyBatchCheckIPHealth(proxyIds: string[], concurr
   return proxyIds.map(proxyId => ({
     proxyId,
     ok: true,
-    source: 'ipinfo.czl.net',
+    source: 'ip.czl.net',
     error: '',
     ip: '127.0.0.1',
     country: 'Mock',

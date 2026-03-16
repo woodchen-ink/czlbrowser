@@ -15,7 +15,7 @@ import (
 	"ant-chrome/backend/internal/logger"
 )
 
-const ipInfoQueryURL = "https://ipinfo.czl.net/api/query"
+const ipInfoQueryURL = "https://ip.czl.net/api/query"
 const ipTimezoneQueryURLTemplate = "http://ip-api.com/json/%s?fields=status,message,countryCode,timezone"
 
 // ipEchoURLs 用于通过代理获取出口 IP 的服务列表，按优先级排列
@@ -102,7 +102,7 @@ func FetchIPInfo(
 		}
 	}
 
-	// 调用 ipinfo.czl.net 查询 IP 地理信息（不走代理）
+	// 调用 ip.czl.net 查询 IP 地理信息（不走代理）
 	queryBody, _ := json.Marshal(map[string]string{"ip": exitIP})
 	req, _ := http.NewRequest(http.MethodPost, ipInfoQueryURL, bytes.NewReader(queryBody))
 	req.Header.Set("Content-Type", "application/json")

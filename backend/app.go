@@ -549,7 +549,7 @@ type ProxyTestResult struct {
 	Error     string `json:"error"`
 }
 
-// ProxyIPHealthResult 代理出口 IP 信息（通过 ipinfo.czl.net 查询）
+// ProxyIPHealthResult 代理出口 IP 信息（通过 ip.czl.net 查询）
 type ProxyIPHealthResult struct {
 	ProxyId      string                 `json:"proxyId"`
 	Ok           bool                   `json:"ok"`
@@ -709,7 +709,7 @@ func buildProxyIPHealthResult(proxyId string, data map[string]interface{}, err e
 		return ProxyIPHealthResult{
 			ProxyId:   proxyId,
 			Ok:        false,
-			Source:    "ipinfo.czl.net",
+			Source:    "ip.czl.net",
 			Error:     err.Error(),
 			RawData:   map[string]interface{}{},
 			UpdatedAt: time.Now().Format(time.RFC3339),
@@ -723,7 +723,7 @@ func buildProxyIPHealthResult(proxyId string, data map[string]interface{}, err e
 	return ProxyIPHealthResult{
 		ProxyId:      proxyId,
 		Ok:           true,
-		Source:       "ipinfo.czl.net",
+		Source:       "ip.czl.net",
 		Error:        "",
 		IP:           mapString(data, "ip"),
 		Country:      mapString(data, "country"),
