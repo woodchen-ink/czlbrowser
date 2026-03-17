@@ -1,8 +1,8 @@
 package backend
 
 import (
-	appconfig "ant-chrome/backend/internal/config"
-	apptray "ant-chrome/backend/internal/tray"
+	appconfig "czl-chrome/backend/internal/config"
+	apptray "czl-chrome/backend/internal/tray"
 	"fmt"
 	"os"
 	"path/filepath"

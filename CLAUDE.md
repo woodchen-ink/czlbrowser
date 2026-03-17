@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CZL Browser is a Windows desktop application for managing isolated browser instances with per-instance proxy binding. Built with **Wails v2** (Go backend + React/TypeScript frontend embedded in a WebView2 window), it compiles to a single `ant-chrome.exe`.
+CZL Browser is a Windows desktop application for managing isolated browser instances with per-instance proxy binding. Built with **Wails v2** (Go backend + React/TypeScript frontend embedded in a WebView2 window), it compiles to a single `czl-chrome.exe`.
 
-Key capabilities: multi-profile browser management, proxy pool (HTTP/SOCKS5/Clash/Xray/Sing-Box), Chrome fingerprint spoofing, quick launch (Ctrl+K), backup/restore.
+Key capabilities: multi-profile browser management, proxy pool (HTTP/SOCKS5/Clash/Xray/Sing-Box), Chrome fingerprint spoofing, quick launch (Ctrl+K), backup/restore, OAuth2 login via CZL Connect.
 
 ## Build & Development Commands
 
@@ -16,7 +16,7 @@ bat\dev.bat
 # Or directly:
 wails dev
 
-# Production build → build/bin/ant-chrome.exe
+# Production build → build/bin/czl-chrome.exe
 bat\build.bat
 
 # Installer packaging (requires NSIS)
@@ -54,6 +54,9 @@ backend/
   app_shutdown.go                # Graceful shutdown, service cleanup
   bootstrap.go                   # Config loading with auto-repair
   internal/
+    auth/                        # OAuth2 authentication (CZL Connect)
+      oauth2.go                  # OAuth2 flow, token exchange, user info
+      token_store.go             # Local token persistence
     browser/                     # Browser management
       core.go                    # Chrome version management
       profile.go                 # Profile CRUD
@@ -73,7 +76,7 @@ backend/
     tray/                        # System tray integration
 ```
 
-**Key pattern**: `backend/app.go` contains all API methods exposed to the frontend. Feature logic lives in `backend/app_*.go` files. Data access uses the DAO pattern in `internal/browser/*_dao.go`.
+**Key pattern**: `backend/app.go` contains all API methods exposed to the frontend. Feature logic lives in `backend/app_*.go` files. Data access uses the DAO pattern in `internal/browser/*_dao.go`. Authentication is handled by `backend/app_auth.go` which wraps `internal/auth/`.
 
 ### Frontend Structure (React + TypeScript)
 
@@ -81,6 +84,7 @@ backend/
 frontend/src/
   App.tsx                        # Router, global event listeners, Ctrl+K handler
   modules/
+    auth/                        # Login page (OAuth2 guard)
     browser/                     # Browser instance management (largest module)
       api.ts                     # Go backend API wrappers
       pages/                     # Page components
@@ -104,13 +108,14 @@ frontend/src/
 - **Config**: `config.yaml` at app root. Loaded with auto-repair on missing fields. Supports runtime reload via `ReloadConfig()`.
 - **Proxy runtime**: `bin/xray.exe` and `bin/sing-box.exe` shipped in-repo. No external downloads needed.
 - **Chrome kernels**: User-provided, placed in `chrome/` directory. Managed through the UI's core management page.
+- **Auth**: OAuth2 via CZL Connect (`connect.czl.net`). Tokens stored in `data/auth_token.json`. App requires login to use. User level (groups field: t0-t5, viewer, admin) displayed in Topbar. Auth state managed by `authStore` (Zustand).
 - **Profile quota**: Instance create/copy flows are not blocked by `MaxProfileLimit`; quota values are informational only.
 - **Quota UI**: Dashboard and Browser List no longer expose redeem/expand quota entry points.
 
 ## Key Conventions
 
 - **Language**: All UI text, log messages, and comments are in Chinese
-- **Go module**: `ant-chrome` (not `czl-browser`)
+- **Go module**: `czl-chrome` (not `czl-browser`)
 - **CSS**: Tailwind CSS with CSS variables defined in the theme (no hardcoded Tailwind colors)
 - **State management**: Zustand (lightweight stores in `src/store/`)
 - **Icons**: Lucide React only (no emoji in UI)

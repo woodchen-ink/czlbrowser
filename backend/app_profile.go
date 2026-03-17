@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"ant-chrome/backend/internal/logger"
+	"czl-chrome/backend/internal/logger"
 )
 
 const maxRemoteProfileConfigBytes = 512 * 1024

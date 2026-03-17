@@ -18,7 +18,7 @@ bat\dev.bat
 
 ### `build.bat`
 
-构建 `build\bin\ant-chrome.exe`。
+构建 `build\bin\czl-chrome.exe`。
 
 ```bat
 bat\build.bat
@@ -52,7 +52,7 @@ C:\Program Files\NSIS\makensis.exe
 
 ```text
 输入：
-- build\bin\ant-chrome.exe
+- build\bin\czl-chrome.exe
 - publish\config.init.yaml
 - bin\xray.exe
 - bin\sing-box.exe

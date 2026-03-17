@@ -1,12 +1,13 @@
 package backend
 
 import (
-	"ant-chrome/backend/internal/browser"
-	"ant-chrome/backend/internal/config"
-	"ant-chrome/backend/internal/database"
-	"ant-chrome/backend/internal/launchcode"
-	"ant-chrome/backend/internal/logger"
-	"ant-chrome/backend/internal/proxy"
+	"czl-chrome/backend/internal/auth"
+	"czl-chrome/backend/internal/browser"
+	"czl-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/database"
+	"czl-chrome/backend/internal/launchcode"
+	"czl-chrome/backend/internal/logger"
+	"czl-chrome/backend/internal/proxy"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -36,6 +37,7 @@ type App struct {
 	launchCodeSvc  *launchcode.LaunchCodeService
 	launchServer   *launchcode.LaunchServer
 	speedScheduler *browser.ProxySpeedScheduler
+	authMgr        *auth.Manager
 	appRoot        string
 
 	forceQuit        bool       // 强制退出标志，用于跳过 OnBeforeClose 的拦截
@@ -92,6 +94,12 @@ func (a *App) startup(ctx context.Context) {
 	// 确保 data 目录存在（存放数据库、用户数据、快照等）
 	if err := os.MkdirAll(a.resolveAppPath("data"), 0755); err != nil {
 		log.Error("创建 data 目录失败", logger.F("error", err))
+	}
+
+	// 初始化 OAuth2 认证管理器
+	a.authMgr = auth.NewManager(a.appRoot)
+	if a.authMgr.TryRestoreSession() {
+		log.Info("OAuth2 会话已恢复")
 	}
 
 	a.ensureDefaultCores()

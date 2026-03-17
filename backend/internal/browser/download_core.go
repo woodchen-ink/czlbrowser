@@ -13,7 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"ant-chrome/backend/internal/logger"
+	"czl-chrome/backend/internal/logger"
+
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/sys/windows/registry"

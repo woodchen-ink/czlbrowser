@@ -15,6 +15,7 @@ type LaunchServerConfig struct {
 	Port int `yaml:"port"`
 }
 
+// OAuth2Config OAuth2 认证配置
 // Config 应用配置
 type Config struct {
 	Database     DatabaseConfig     `yaml:"database"`

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"ant-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/config"
 
 	xproxy "golang.org/x/net/proxy"
 )

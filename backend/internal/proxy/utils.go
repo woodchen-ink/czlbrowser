@@ -11,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"ant-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/config"
+
 	"gopkg.in/yaml.v3"
 )
 

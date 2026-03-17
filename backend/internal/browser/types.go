@@ -1,7 +1,7 @@
 package browser
 
 import (
-	"ant-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"

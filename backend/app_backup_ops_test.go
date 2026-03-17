@@ -1,7 +1,7 @@
 package backend
 
 import (
-	"ant-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/config"
 	"os"
 	"path/filepath"
 	"testing"

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"ant-chrome/backend/internal/config"
-	"ant-chrome/backend/internal/logger"
+	"czl-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/logger"
 
 	xproxy "golang.org/x/net/proxy"
 )

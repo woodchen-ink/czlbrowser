@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ant-chrome/backend/internal/browser"
-	"ant-chrome/backend/internal/launchcode"
+	"czl-chrome/backend/internal/browser"
+	"czl-chrome/backend/internal/launchcode"
 )
 
 type mockStarterWithParams struct {

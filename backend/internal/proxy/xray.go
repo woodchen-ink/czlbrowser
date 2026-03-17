@@ -1,9 +1,9 @@
 package proxy
 
 import (
-	"ant-chrome/backend/internal/config"
-	"ant-chrome/backend/internal/logger"
 	"crypto/sha256"
+	"czl-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/logger"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"

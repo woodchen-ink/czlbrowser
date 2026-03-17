@@ -1,7 +1,7 @@
 package browser
 
 import (
-	"ant-chrome/backend/internal/logger"
+	"czl-chrome/backend/internal/logger"
 	"encoding/json"
 	"fmt"
 	"os"

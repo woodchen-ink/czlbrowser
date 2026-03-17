@@ -318,7 +318,7 @@ function Invoke-GitCommit {
         [switch]$AllowEmpty
     )
 
-    $messagePath = Join-Path $env:TEMP ("ant-chrome-commit-message-" + [guid]::NewGuid().ToString("N") + ".txt")
+    $messagePath = Join-Path $env:TEMP ("czl-chrome-commit-message-" + [guid]::NewGuid().ToString("N") + ".txt")
     try {
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
         [System.IO.File]::WriteAllText($messagePath, $Message, $utf8NoBom)
@@ -346,7 +346,7 @@ function Invoke-GitAnnotatedTag {
         [string]$Message
     )
 
-    $messagePath = Join-Path $env:TEMP ("ant-chrome-tag-message-" + [guid]::NewGuid().ToString("N") + ".txt")
+    $messagePath = Join-Path $env:TEMP ("czl-chrome-tag-message-" + [guid]::NewGuid().ToString("N") + ".txt")
     try {
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
         [System.IO.File]::WriteAllText($messagePath, $Message, $utf8NoBom)
@@ -680,7 +680,7 @@ if ($shouldPublishTag) {
 }
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$tempRoot = Join-Path $env:TEMP "ant-chrome-public-$Version-$timestamp"
+$tempRoot = Join-Path $env:TEMP "czl-chrome-public-$Version-$timestamp"
 $snapshotDir = Join-Path $tempRoot "snapshot"
 $workRepoDir = Join-Path $tempRoot "workrepo"
 $archivePath = Join-Path $tempRoot "snapshot.zip"

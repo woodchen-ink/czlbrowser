@@ -1,4 +1,4 @@
-module ant-chrome
+module czl-chrome
 
 go 1.22.0
 

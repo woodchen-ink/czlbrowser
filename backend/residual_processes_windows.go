@@ -58,7 +58,7 @@ if ($left.Count -gt 0) {
 exit 0
 `
 
-	tempFile, err := os.CreateTemp("", "ant-chrome-cleanup-*.ps1")
+	tempFile, err := os.CreateTemp("", "czl-chrome-cleanup-*.ps1")
 	if err != nil {
 		return fmt.Errorf("创建清理脚本失败: %w", err)
 	}

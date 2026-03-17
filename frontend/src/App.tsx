@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './shared/theme'
 import { Layout } from './shared/layout'
-import { ToastContainer, Modal, Button } from './shared/components'
+import { ToastContainer, Modal, Button, Loading } from './shared/components'
 import { AlertCircle } from 'lucide-react'
 import { DashboardPage } from './modules/dashboard'
 import { SettingsPage } from './modules/settings'
 import { ProfilePage } from './modules/profile'
 import { AdminKeygenPage } from './modules/profile/AdminKeygenPage'
 import { ChartsPage } from './modules/charts'
+import { LoginPage } from './modules/auth'
 import {
   BrowserListPage,
   BrowserDetailPage,
@@ -26,6 +27,7 @@ import {
 import { QuickLaunchModal } from './modules/browser/components/QuickLaunchModal'
 import { useNotificationStore } from './store/notificationStore'
 import { useBackupStore } from './store/backupStore'
+import { useAuthStore } from './store/authStore'
 
 function useWailsNotifications() {
   const addNotification = useNotificationStore((s) => s.addNotification)
@@ -73,6 +75,28 @@ function useWailsNotifications() {
       offBridgeDied?.()
     }
   }, [addNotification])
+}
+
+function useAuthEvents() {
+  const { setAuthState, fetchState } = useAuthStore()
+
+  useEffect(() => {
+    const runtime = (window as any).runtime
+    if (!runtime?.EventsOn) return
+
+    const offSuccess = runtime.EventsOn('auth:login:success', (state: any) => {
+      setAuthState(state)
+    })
+
+    const offTimeout = runtime.EventsOn('auth:login:timeout', () => {
+      useAuthStore.setState({ loginPending: false })
+    })
+
+    return () => {
+      offSuccess?.()
+      offTimeout?.()
+    }
+  }, [setAuthState, fetchState])
 }
 
 function CloseConfirmModal() {
@@ -166,7 +190,7 @@ function CloseConfirmModal() {
   )
 }
 
-function App() {
+function AuthenticatedApp() {
   useWailsNotifications()
   const [quickLaunchOpen, setQuickLaunchOpen] = useState(false)
 
@@ -186,33 +210,65 @@ function App() {
   }, [])
 
   return (
+    <Layout>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/charts" element={<ChartsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/admin/keygen" element={<AdminKeygenPage />} />
+        <Route path="/browser/list" element={<BrowserListPage />} />
+        <Route path="/browser/detail/:id" element={<BrowserDetailPage />} />
+        <Route path="/browser/edit/:id" element={<BrowserEditPage />} />
+        <Route path="/browser/copy/:id" element={<BrowserCopyPage />} />
+        <Route path="/browser/monitor" element={<Navigate to="/browser/list" replace />} />
+        <Route path="/browser/logs" element={<BrowserLogsPage />} />
+        <Route path="/browser/proxy-pool" element={<ProxyPoolPage />} />
+        <Route path="/browser/cores" element={<CoreManagementPage />} />
+        <Route path="/browser/bookmarks" element={<BookmarkSettingsPage />} />
+        <Route path="/browser/automation" element={<AutomationPage />} />
+        <Route path="/browser/launch-api" element={<LaunchApiDocsPage />} />
+        <Route path="/browser/tags" element={<TagManagementPage />} />
+        <Route path="/system/tutorial" element={<UsageTutorialPage />} />
+      </Routes>
+      <QuickLaunchModal open={quickLaunchOpen} onClose={() => setQuickLaunchOpen(false)} />
+    </Layout>
+  )
+}
+
+function App() {
+  const { state: authState, loading, fetchState } = useAuthStore()
+  useAuthEvents()
+
+  useEffect(() => {
+    fetchState()
+  }, [fetchState])
+
+  if (loading) {
+    return (
+      <ThemeProvider>
+        <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-bg-base)]">
+          <Loading />
+        </div>
+      </ThemeProvider>
+    )
+  }
+
+  if (!authState.loggedIn) {
+    return (
+      <ThemeProvider>
+        <LoginPage />
+        <ToastContainer />
+      </ThemeProvider>
+    )
+  }
+
+  return (
     <ThemeProvider>
       <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/charts" element={<ChartsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/admin/keygen" element={<AdminKeygenPage />} />
-            <Route path="/browser/list" element={<BrowserListPage />} />
-            <Route path="/browser/detail/:id" element={<BrowserDetailPage />} />
-            <Route path="/browser/edit/:id" element={<BrowserEditPage />} />
-            <Route path="/browser/copy/:id" element={<BrowserCopyPage />} />
-            <Route path="/browser/monitor" element={<Navigate to="/browser/list" replace />} />
-            <Route path="/browser/logs" element={<BrowserLogsPage />} />
-            <Route path="/browser/proxy-pool" element={<ProxyPoolPage />} />
-            <Route path="/browser/cores" element={<CoreManagementPage />} />
-            <Route path="/browser/bookmarks" element={<BookmarkSettingsPage />} />
-            <Route path="/browser/automation" element={<AutomationPage />} />
-            <Route path="/browser/launch-api" element={<LaunchApiDocsPage />} />
-            <Route path="/browser/tags" element={<TagManagementPage />} />
-            <Route path="/system/tutorial" element={<UsageTutorialPage />} />
-          </Routes>
-        </Layout>
+        <AuthenticatedApp />
         <ToastContainer />
         <CloseConfirmModal />
-        <QuickLaunchModal open={quickLaunchOpen} onClose={() => setQuickLaunchOpen(false)} />
       </Router>
     </ThemeProvider>
   )

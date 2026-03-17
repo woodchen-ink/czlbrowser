@@ -1,7 +1,7 @@
 package backup
 
 import (
-	"ant-chrome/backend/internal/config"
+	"czl-chrome/backend/internal/config"
 	"path/filepath"
 	"testing"
 	"time"

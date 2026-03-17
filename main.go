@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ant-chrome/backend"
+	"czl-chrome/backend"
 	"context"
 	"embed"
 	"log"

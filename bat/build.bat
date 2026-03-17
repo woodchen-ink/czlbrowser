@@ -139,7 +139,7 @@ echo ========================================
 echo   ✓ 构建成功！
 echo ========================================
 echo.
-echo 可执行文件位置: build\bin\ant-chrome.exe
+echo 可执行文件位置: build\bin\czl-chrome.exe
 echo.
 
 REM 清理代理配置

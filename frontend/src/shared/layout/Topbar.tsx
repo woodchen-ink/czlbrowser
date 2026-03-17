@@ -1,8 +1,22 @@
-﻿import { useState, useRef, useEffect } from 'react'
-import { Bell, Search, User, Settings, Check, Trash2, Info, AlertCircle, CheckCircle } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Bell, Search, User, Settings, Check, Trash2, Info, AlertCircle, CheckCircle, LogOut, Crown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useNotificationStore, type Notification } from '../../store/notificationStore'
+import { useAuthStore } from '../../store/authStore'
+
+/** 等级显示名称映射 */
+const LEVEL_LABELS: Record<string, string> = {
+  admin: '管理员',
+  t5: 'T5',
+  t4: 'T4',
+  t3: 'T3',
+  t2: 'T2',
+  t1: 'T1',
+  t0: 'T0',
+  viewer: '观察者',
+  visitor: '访客',
+}
 
 function NotificationDropdown({
   notifications,
@@ -116,18 +130,96 @@ function NotificationDropdown({
   )
 }
 
+function UserDropdown({ onClose }: { onClose: () => void }) {
+  const { state: authState, logout } = useAuthStore()
+  const user = authState.user
+  const levelLabel = LEVEL_LABELS[authState.level] || authState.level
+
+  const handleLogout = async () => {
+    onClose()
+    await logout()
+  }
+
+  return (
+    <div className="absolute right-0 top-full mt-2 w-64 bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
+      {/* User Info */}
+      <div className="px-4 py-3 border-b border-[var(--color-border-muted)]">
+        <div className="flex items-center gap-3">
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.nickname || user.username}
+              className="w-9 h-9 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-9 h-9 bg-[var(--color-accent)] rounded-lg flex items-center justify-center">
+              <User className="w-4 h-4 text-[var(--color-text-inverse)]" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+              {user?.nickname || user?.username || '用户'}
+            </p>
+            <p className="text-xs text-[var(--color-text-muted)] truncate">
+              {user?.email || ''}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Level */}
+      <div className="px-4 py-2.5 border-b border-[var(--color-border-muted)]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[var(--color-text-muted)]">当前等级</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--color-accent)]/10 text-xs font-medium text-[var(--color-accent)]">
+            <Crown className="w-3 h-3" />
+            {levelLabel}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="p-1.5">
+        <Link
+          to="/profile"
+          onClick={onClose}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)] rounded-lg transition-colors"
+        >
+          <User className="w-4 h-4" />
+          个人信息
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-error)] hover:bg-[var(--color-bg-muted)] rounded-lg transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          退出登录
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function Topbar() {
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotificationStore()
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const { state: authState } = useAuthStore()
+  const notifRef = useRef<HTMLDivElement>(null)
+  const userRef = useRef<HTMLDivElement>(null)
 
   const unreadCount = notifications.filter(n => !n.read).length
+  const user = authState.user
+  const levelLabel = LEVEL_LABELS[authState.level] || authState.level
 
   // 点击外部关闭
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setShowNotifications(false)
+      }
+      if (userRef.current && !userRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -154,7 +246,7 @@ export function Topbar() {
       {/* 右侧操作 */}
       <div className="flex items-center gap-1">
         {/* 通知按钮 */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative" ref={notifRef}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className={clsx(
@@ -196,15 +288,37 @@ export function Topbar() {
 
         <div className="w-px h-5 bg-[var(--color-border-default)] mx-1.5" />
 
-        <Link
-          to="/profile"
-          className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-md hover:bg-[var(--color-accent-muted)] transition-colors duration-150"
-        >
-          <div className="w-7 h-7 bg-[var(--color-accent)] rounded-md flex items-center justify-center">
-            <User className="w-3.5 h-3.5 text-[var(--color-text-inverse)]" />
-          </div>
-          <span className="text-sm font-medium text-[var(--color-text-secondary)]">Admin</span>
-        </Link>
+        {/* 用户信息 */}
+        <div className="relative" ref={userRef}>
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-md hover:bg-[var(--color-accent-muted)] transition-colors duration-150"
+          >
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.nickname || user.username}
+                className="w-7 h-7 rounded-md object-cover"
+              />
+            ) : (
+              <div className="w-7 h-7 bg-[var(--color-accent)] rounded-md flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-[var(--color-text-inverse)]" />
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+                {user?.nickname || user?.username || '用户'}
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
+                {levelLabel}
+              </span>
+            </div>
+          </button>
+
+          {showUserMenu && (
+            <UserDropdown onClose={() => setShowUserMenu(false)} />
+          )}
+        </div>
       </div>
     </header>
   )

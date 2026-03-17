@@ -1,0 +1,84 @@
+import { create } from 'zustand'
+
+export interface AuthUserInfo {
+  id: string
+  username: string
+  nickname: string
+  email: string
+  avatar: string
+  groups: string
+}
+
+export interface AuthState {
+  loggedIn: boolean
+  user?: AuthUserInfo
+  level: string
+}
+
+interface AuthStore {
+  state: AuthState
+  loading: boolean
+  loginPending: boolean
+
+  /** 从后端获取当前认证状态 */
+  fetchState: () => Promise<void>
+
+  /** 发起 OAuth2 登录 */
+  login: () => Promise<void>
+
+  /** 登出 */
+  logout: () => Promise<void>
+
+  /** 登录成功时更新状态 */
+  setAuthState: (state: AuthState) => void
+}
+
+const goApp = () => (window as any).go?.main?.App
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  state: { loggedIn: false, level: '' },
+  loading: true,
+  loginPending: false,
+
+  fetchState: async () => {
+    try {
+      const app = goApp()
+      if (!app?.AuthGetState) {
+        set({ loading: false })
+        return
+      }
+      const state: AuthState = await app.AuthGetState()
+      set({ state, loading: false })
+    } catch {
+      set({ loading: false })
+    }
+  },
+
+  login: async () => {
+    try {
+      set({ loginPending: true })
+      const app = goApp()
+      if (!app?.AuthLogin) return
+      await app.AuthLogin()
+    } catch (err) {
+      set({ loginPending: false })
+      throw err
+    }
+  },
+
+  logout: async () => {
+    try {
+      const app = goApp()
+      if (app?.AuthLogout) {
+        await app.AuthLogout()
+      }
+      set({ state: { loggedIn: false, level: '' }, loginPending: false })
+    } catch {
+      // 忽略登出错误
+    }
+  },
+
+  setAuthState: (state: AuthState) => {
+    set({ state, loading: false, loginPending: false })
+  },
+}))
