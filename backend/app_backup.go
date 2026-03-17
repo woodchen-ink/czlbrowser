@@ -23,7 +23,7 @@ func (a *App) BackupGetManifestTemplate() (BackupManifest, error) {
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	appName := "Ant Browser"
+	appName := "CZL Browser"
 	if a.config != nil {
 		if name := strings.TrimSpace(a.config.App.Name); name != "" {
 			appName = name

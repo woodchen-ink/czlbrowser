@@ -1,22 +1,22 @@
-# Ant Browser
+# CZL Browser
 
 > 面向多账号隔离、代理绑定和本地环境管理的 Windows 桌面浏览器工具。
 
-[![Release](https://img.shields.io/github/v/release/black-ant/Ant-Browser?sort=semver)](https://github.com/black-ant/Ant-Browser/releases)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue)](https://github.com/black-ant/Ant-Browser/releases)
-[![Issues](https://img.shields.io/github/issues/black-ant/Ant-Browser)](https://github.com/black-ant/Ant-Browser/issues)
+[![Release](https://img.shields.io/github/v/release/woodchen-ink/CZL-Browser?sort=semver)](https://github.com/woodchen-ink/CZL-Browser/releases)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue)](https://github.com/woodchen-ink/CZL-Browser/releases)
+[![Issues](https://img.shields.io/github/issues/woodchen-ink/CZL-Browser)](https://github.com/woodchen-ink/CZL-Browser/issues)
 
 ## 推荐内核项目
 
-Ant Browser 当前推荐配套使用的浏览器内核，来源于开源项目 [fingerprint-chromium](https://github.com/adryfish/fingerprint-chromium)。
+CZL Browser 当前推荐配套使用的浏览器内核，来源于开源项目 [fingerprint-chromium](https://github.com/adryfish/fingerprint-chromium)。
 
 如果你正在寻找可直接下载和维护的指纹内核版本，建议先查看它的 Releases 页面：
 
 - <https://github.com/adryfish/fingerprint-chromium/releases>
 
-这个项目为 Ant Browser 的内核准备提供了直接可用的基础来源，这里先对原项目做明确推荐与致谢。
+这个项目为 CZL Browser 的内核准备提供了直接可用的基础来源，这里先对原项目做明确推荐与致谢。
 
-Ant Browser 的目标很明确：在一台 Windows 设备上，帮助用户稳定管理多个彼此隔离的浏览器实例，并配合代理池、浏览器内核和快捷启动能力完成日常运营或测试工作。
+CZL Browser 的目标很明确：在一台 Windows 设备上，帮助用户稳定管理多个彼此隔离的浏览器实例，并配合代理池、浏览器内核和快捷启动能力完成日常运营或测试工作。
 
 ## 目录
 
@@ -33,7 +33,7 @@ Ant Browser 的目标很明确：在一台 Windows 设备上，帮助用户稳�
 
 ## 项目简介
 
-Ant Browser 适合以下场景：
+CZL Browser 适合以下场景：
 
 - 多账号环境隔离
 - 跨境电商与社媒账号运营
@@ -117,7 +117,7 @@ Ant Browser 适合以下场景：
 
 ### 下载与运行
 
-1. 前往 Releases 页面下载最新版本：<https://github.com/black-ant/Ant-Browser/releases>
+1. 前往 Releases 页面下载最新版本：<https://github.com/woodchen-ink/CZL-Browser/releases>
 2. 安装版直接运行 `AntBrowser-Setup-*.exe`
 3. 便携版解压后运行 `ant-chrome.exe`
 
@@ -201,8 +201,8 @@ chrome/
 
 ## 支持与反馈
 
-- Releases：<https://github.com/black-ant/Ant-Browser/releases>
-- Issues：<https://github.com/black-ant/Ant-Browser/issues>
+- Releases：<https://github.com/woodchen-ink/CZL-Browser/releases>
+- Issues：<https://github.com/woodchen-ink/CZL-Browser/issues>
 
 ## License
 

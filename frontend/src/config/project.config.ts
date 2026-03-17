@@ -6,7 +6,7 @@
 
 // 项目基础信息
 export const projectConfig = {
-  name: 'Ant Browser',
+  name: 'CZL Browser',
   shortName: '架',
   description: '基于 Wails + React 的桌面应用脚手架',
   version: '1.0.0',

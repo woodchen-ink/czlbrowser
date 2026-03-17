@@ -68,7 +68,7 @@ func (a *App) BackupExportPackage() (map[string]interface{}, error) {
 		a.backupEmitExportProgress("error", 100, fmt.Sprintf("导出失败: %v", err))
 		return nil, err
 	}
-	appName := "Ant Browser"
+	appName := "CZL Browser"
 	if a.config != nil && strings.TrimSpace(a.config.App.Name) != "" {
 		appName = strings.TrimSpace(a.config.App.Name)
 	}

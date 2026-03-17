@@ -33,7 +33,7 @@ browser: {}
 	if cfg.Database.SQLite.Path != "data/app.db" {
 		t.Fatalf("Database.SQLite.Path 未补齐: got=%q", cfg.Database.SQLite.Path)
 	}
-	if cfg.App.Name != "Ant Browser" {
+	if cfg.App.Name != "CZL Browser" {
 		t.Fatalf("App.Name 未补齐: got=%q", cfg.App.Name)
 	}
 	if cfg.App.MaxProfileLimit != 6 {

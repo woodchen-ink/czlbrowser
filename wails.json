@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "Ant Browser",
+  "name": "CZL Browser",
   "outputfilename": "ant-chrome",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
@@ -12,7 +12,7 @@
   },
   "info": {
     "companyName": "Ant Chrome",
-    "productName": "Ant Browser",
+    "productName": "CZL Browser",
     "productVersion": "1.0.0",
     "copyright": "Copyright © 2025",
     "comments": "智能资讯聚合与AI处理平台"

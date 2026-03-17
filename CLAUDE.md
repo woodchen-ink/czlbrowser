@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Ant Browser is a Windows desktop application for managing isolated browser instances with per-instance proxy binding. Built with **Wails v2** (Go backend + React/TypeScript frontend embedded in a WebView2 window), it compiles to a single `ant-chrome.exe`.
+CZL Browser is a Windows desktop application for managing isolated browser instances with per-instance proxy binding. Built with **Wails v2** (Go backend + React/TypeScript frontend embedded in a WebView2 window), it compiles to a single `ant-chrome.exe`.
 
 Key capabilities: multi-profile browser management, proxy pool (HTTP/SOCKS5/Clash/Xray/Sing-Box), Chrome fingerprint spoofing, quick launch (Ctrl+K), backup/restore.
 
@@ -110,7 +110,7 @@ frontend/src/
 ## Key Conventions
 
 - **Language**: All UI text, log messages, and comments are in Chinese
-- **Go module**: `ant-chrome` (not `ant-browser`)
+- **Go module**: `ant-chrome` (not `czl-browser`)
 - **CSS**: Tailwind CSS with CSS variables defined in the theme (no hardcoded Tailwind colors)
 - **State management**: Zustand (lightweight stores in `src/store/`)
 - **Icons**: Lucide React only (no emoji in UI)

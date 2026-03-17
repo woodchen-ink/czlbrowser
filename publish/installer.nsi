@@ -1,4 +1,4 @@
-﻿; Ant Browser NSIS Installer Script
+﻿; CZL Browser NSIS Installer Script
 ; Usage: makensis /DVERSION=1.0.0 /DSTAGINGDIR=C:\path\to\staging installer.nsi
 
 Unicode True
@@ -10,10 +10,10 @@ Unicode True
   !define STAGINGDIR "..\publish\staging"
 !endif
 
-!define PRODUCT_NAME    "Ant Browser"
+!define PRODUCT_NAME    "CZL Browser"
 !define PRODUCT_EXE     "ant-chrome.exe"
 !define UNINSTALL_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\AntBrowser"
-!define INSTALL_DIR     "$PROGRAMFILES64\Ant Browser"
+!define INSTALL_DIR     "$PROGRAMFILES64\CZL Browser"
 !define POWERSHELL_EXE  "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
 
 !include "MUI2.nsh"
@@ -135,7 +135,7 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${PRODUCT_EXE}"
-!define MUI_FINISHPAGE_RUN_TEXT "Launch Ant Browser"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch CZL Browser"
 !insertmacro MUI_PAGE_FINISH
 
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -143,7 +143,7 @@ SetCompressor /SOLID lzma
 
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
-Section "Ant Browser (required)" SecMain
+Section "CZL Browser (required)" SecMain
   SectionIn RO
   Call CloseInstalledProcesses
   SetOutPath "$INSTDIR"
@@ -187,7 +187,7 @@ Section /o "Desktop Shortcut" SecDesktop
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain}    "Ant Browser main program and default config (required)"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain}    "CZL Browser main program and default config (required)"
   !insertmacro MUI_DESCRIPTION_TEXT ${SecRuntime} "xray and sing-box proxy tools (vless/vmess/hysteria2)"
   !insertmacro MUI_DESCRIPTION_TEXT ${SecChrome}  "Bundled Chrome engine for browser instances"
   !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Create a shortcut on the desktop"
