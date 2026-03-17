@@ -118,7 +118,7 @@ CZL Browser 适合以下场景：
 ### 下载与运行
 
 1. 前往 Releases 页面下载最新版本：<https://github.com/woodchen-ink/CZL-Browser/releases>
-2. 安装版直接运行 `AntBrowser-Setup-*.exe`
+2. 安装版直接运行 `CZLBrowser-Setup-*.exe`
 3. 便携版解压后运行 `czl-browser.exe`
 
 ### 从源码运行

@@ -12,7 +12,7 @@ Unicode True
 
 !define PRODUCT_NAME    "CZL Browser"
 !define PRODUCT_EXE     "czl-browser.exe"
-!define UNINSTALL_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\AntBrowser"
+!define UNINSTALL_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\CZLBrowser"
 !define INSTALL_DIR     "$PROGRAMFILES64\CZL Browser"
 !define POWERSHELL_EXE  "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
 
@@ -26,19 +26,19 @@ Unicode True
   FileWrite ${HANDLE} "$$root = [System.IO.Path]::GetFullPath($$InstallDir).TrimEnd('\') + '\'$\r$\n"
   FileWrite ${HANDLE} "$$exclude = ''$\r$\n"
   FileWrite ${HANDLE} "if (-not [string]::IsNullOrWhiteSpace($$ExcludePath)) { $$exclude = [System.IO.Path]::GetFullPath($$ExcludePath) }$\r$\n"
-  FileWrite ${HANDLE} "function Get-AntBrowserProcesses {$\r$\n"
+  FileWrite ${HANDLE} "function Get-CZLBrowserProcesses {$\r$\n"
   FileWrite ${HANDLE} "  @(Get-CimInstance Win32_Process | Where-Object {$\r$\n"
   FileWrite ${HANDLE} "    $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [System.StringComparison]::OrdinalIgnoreCase) -and ($$exclude -eq '' -or -not $$_.ExecutablePath.Equals($$exclude, [System.StringComparison]::OrdinalIgnoreCase))$\r$\n"
   FileWrite ${HANDLE} "  })$\r$\n"
   FileWrite ${HANDLE} "}$\r$\n"
   FileWrite ${HANDLE} "$$deadline = (Get-Date).AddSeconds(10)$\r$\n"
   FileWrite ${HANDLE} "do {$\r$\n"
-  FileWrite ${HANDLE} "  $$procs = Get-AntBrowserProcesses$\r$\n"
+  FileWrite ${HANDLE} "  $$procs = Get-CZLBrowserProcesses$\r$\n"
   FileWrite ${HANDLE} "  if (-not $$procs -or $$procs.Count -eq 0) { exit 0 }$\r$\n"
   FileWrite ${HANDLE} "  foreach ($$p in $$procs) { try { Stop-Process -Id $$p.ProcessId -Force -ErrorAction Stop } catch {} }$\r$\n"
   FileWrite ${HANDLE} "  Start-Sleep -Milliseconds 400$\r$\n"
   FileWrite ${HANDLE} "} while ((Get-Date) -lt $$deadline)$\r$\n"
-  FileWrite ${HANDLE} "$$left = Get-AntBrowserProcesses$\r$\n"
+  FileWrite ${HANDLE} "$$left = Get-CZLBrowserProcesses$\r$\n"
   FileWrite ${HANDLE} "if ($$left -and $$left.Count -gt 0) {$\r$\n"
   FileWrite ${HANDLE} "  $$names = ($$left | ForEach-Object { $$_.Name + '#' + $$_.ProcessId }) -join ', '$\r$\n"
   FileWrite ${HANDLE} "  Write-Host ('still running: ' + $$names)$\r$\n"
@@ -120,7 +120,7 @@ done:
 FunctionEnd
 
 Name "${PRODUCT_NAME} ${VERSION}"
-OutFile "..\publish\output\AntBrowser-Setup-${VERSION}.exe"
+OutFile "..\publish\output\CZLBrowser-Setup-${VERSION}.exe"
 InstallDir "${INSTALL_DIR}"
 InstallDirRegKey HKLM "${UNINSTALL_KEY}" "InstallLocation"
 RequestExecutionLevel admin

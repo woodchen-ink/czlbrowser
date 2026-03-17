@@ -62,13 +62,13 @@ C:\Program Files\NSIS\makensis.exe
 - publish\staging\
 
 输出：
-- publish\output\AntBrowser-Setup-<version>.exe
+- publish\output\CZLBrowser-Setup-<version>.exe
 ```
 
 产物：
 
 ```text
-publish\output\AntBrowser-Setup-<version>.exe
+publish\output\CZLBrowser-Setup-<version>.exe
 ```
 
 ## 备注
