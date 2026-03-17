@@ -106,12 +106,12 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-if not exist "build\bin\czl-chrome.exe" (
-    echo ✗ 构建产物不存在: build\bin\czl-chrome.exe
+if not exist "build\bin\czl-browser.exe" (
+    echo ✗ 构建产物不存在: build\bin\czl-browser.exe
     pause
     exit /b 1
 )
-echo ✓ 构建成功: build\bin\czl-chrome.exe
+echo ✓ 构建成功: build\bin\czl-browser.exe
 echo.
 
 REM ======== [4/6] 组装 staging 目录 ========
@@ -123,20 +123,20 @@ set "RELEASE_CONFIG=publish\config.init.yaml"
 if exist "!STAGING!" rmdir /S /Q "!STAGING!"
 mkdir "!STAGING!"
 
-copy /Y "build\bin\czl-chrome.exe" "!STAGING!\czl-chrome.exe" >nul
+copy /Y "build\bin\czl-browser.exe" "!STAGING!\czl-browser.exe" >nul
 if errorlevel 1 (
-    echo ✗ 复制 czl-chrome.exe 失败
+    echo ✗ 复制 czl-browser.exe 失败
     rmdir /S /Q "!STAGING!"
     pause
     exit /b 1
 )
-if not exist "!STAGING!\czl-chrome.exe" (
-    echo ✗ staging 中缺少 czl-chrome.exe
+if not exist "!STAGING!\czl-browser.exe" (
+    echo ✗ staging 中缺少 czl-browser.exe
     rmdir /S /Q "!STAGING!"
     pause
     exit /b 1
 )
-echo ✓ 复制 czl-chrome.exe
+echo ✓ 复制 czl-browser.exe
 
 if not exist "!RELEASE_CONFIG!" (
     echo ✗ 未找到发布配置模板: !RELEASE_CONFIG!

@@ -6,19 +6,22 @@ import { useAuthStore } from '../../store/authStore'
 import logoImage from '../../resources/images/logo.png'
 
 export function LoginPage() {
-  const { login, loginPending } = useAuthStore()
-  const [error, setError] = useState('')
+  const { login, loginPending, loginError } = useAuthStore()
+  const [localError, setLocalError] = useState('')
   const [manualURL, setManualURL] = useState('')
 
+  // 显示同步错误（AuthLogin 直接抛出的）或异步错误（事件回调的）
+  const displayError = localError || loginError
+
   const handleLogin = async () => {
-    setError('')
+    setLocalError('')
     setManualURL('')
+    useAuthStore.setState({ loginError: '' })
     try {
       await login()
     } catch (err: any) {
-      // Wails 把 Go error 作为字符串传递
       const msg = typeof err === 'string' ? err : err?.message || '登录失败，请重试'
-      setError(msg)
+      setLocalError(msg)
       return
     }
 
@@ -83,7 +86,7 @@ export function LoginPage() {
               )}
             </Button>
 
-            {loginPending && (
+            {loginPending && !displayError && (
               <p className="text-xs text-center text-[var(--color-text-muted)]">
                 已在浏览器中打开授权页面，请完成登录后返回此应用
               </p>
@@ -106,8 +109,8 @@ export function LoginPage() {
               </div>
             )}
 
-            {error && (
-              <p className="text-xs text-center text-[var(--color-error)]">{error}</p>
+            {displayError && (
+              <p className="text-xs text-center text-[var(--color-error)]">{displayError}</p>
             )}
           </div>
 

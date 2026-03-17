@@ -1,7 +1,7 @@
 package browser
 
 import (
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/logger"
 	"fmt"
 	"os/exec"
 	"sort"

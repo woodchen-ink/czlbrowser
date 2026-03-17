@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"czl-chrome/backend/internal/config"
+	"czl-browser/backend/internal/config"
 )
 
 // BookmarkDAO 默认书签持久化接口

@@ -11,7 +11,7 @@ Unicode True
 !endif
 
 !define PRODUCT_NAME    "CZL Browser"
-!define PRODUCT_EXE     "czl-chrome.exe"
+!define PRODUCT_EXE     "czl-browser.exe"
 !define UNINSTALL_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\AntBrowser"
 !define INSTALL_DIR     "$PROGRAMFILES64\CZL Browser"
 !define POWERSHELL_EXE  "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"

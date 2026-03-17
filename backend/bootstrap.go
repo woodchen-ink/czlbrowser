@@ -1,8 +1,8 @@
 package backend
 
 import (
-	appconfig "czl-chrome/backend/internal/config"
-	apptray "czl-chrome/backend/internal/tray"
+	appconfig "czl-browser/backend/internal/config"
+	apptray "czl-browser/backend/internal/tray"
 	"fmt"
 	"os"
 	"path/filepath"

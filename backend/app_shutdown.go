@@ -1,7 +1,7 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/logger"
 	"fmt"
 	"os/exec"
 	stdruntime "runtime"

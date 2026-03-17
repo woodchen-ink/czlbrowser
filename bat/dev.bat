@@ -13,8 +13,8 @@ echo.
 call :cleanup_dev_logs
 
 echo Cleaning stale processes...
-taskkill /F /IM czl-chrome-dev.exe >nul 2>&1
-taskkill /F /IM czl-chrome.exe >nul 2>&1
+taskkill /F /IM czl-browser-dev.exe >nul 2>&1
+taskkill /F /IM czl-browser.exe >nul 2>&1
 echo.
 
 set FRONTEND_PORT=5218

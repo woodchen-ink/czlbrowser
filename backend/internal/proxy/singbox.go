@@ -1,8 +1,8 @@
 package proxy
 
 import (
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/logger"
 	"encoding/json"
 	"fmt"
 	"os"

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"czl-chrome/backend/internal/launchcode"
+	"czl-browser/backend/internal/launchcode"
 )
 
 func TestLaunchServerStartWithAutoPort(t *testing.T) {

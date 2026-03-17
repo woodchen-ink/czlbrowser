@@ -1,4 +1,4 @@
-module czl-chrome
+module czl-browser
 
 go 1.22.0
 

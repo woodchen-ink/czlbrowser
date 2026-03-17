@@ -132,8 +132,6 @@ export function CreateGroup(arg1:browser.GroupInput):Promise<browser.Group>;
 
 export function DeleteGroup(arg1:string):Promise<void>;
 
-export function FetchRemoteAuthorProfile(arg1:string,arg2:number):Promise<Record<string, any>>;
-
 export function ForceQuit():Promise<void>;
 
 export function GenerateCDKeys(arg1:number):Promise<Array<string>>;

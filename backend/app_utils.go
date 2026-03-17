@@ -1,9 +1,9 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/browser"
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/browser"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/logger"
 	"fmt"
 	"net"
 	"os"

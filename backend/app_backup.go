@@ -1,7 +1,7 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/backup"
+	"czl-browser/backend/internal/backup"
 	"strings"
 	"time"
 )

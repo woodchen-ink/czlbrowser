@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"czl-chrome/backend/internal/browser"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/browser"
+	"czl-browser/backend/internal/logger"
 )
 
 // BrowserStarter 浏览器启动接口（由 App 层实现并注入）

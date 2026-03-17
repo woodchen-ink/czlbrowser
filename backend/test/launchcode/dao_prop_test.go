@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"czl-chrome/backend/internal/launchcode"
+	"czl-browser/backend/internal/launchcode"
 
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"

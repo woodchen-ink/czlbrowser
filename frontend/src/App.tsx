@@ -78,7 +78,7 @@ function useWailsNotifications() {
 }
 
 function useAuthEvents() {
-  const { setAuthState, fetchState } = useAuthStore()
+  const { setAuthState } = useAuthStore()
 
   useEffect(() => {
     const runtime = (window as any).runtime
@@ -88,15 +88,15 @@ function useAuthEvents() {
       setAuthState(state)
     })
 
-    const offTimeout = runtime.EventsOn('auth:login:timeout', () => {
-      useAuthStore.setState({ loginPending: false })
+    const offError = runtime.EventsOn('auth:login:error', (errMsg: string) => {
+      useAuthStore.setState({ loginPending: false, loginError: errMsg })
     })
 
     return () => {
       offSuccess?.()
-      offTimeout?.()
+      offError?.()
     }
-  }, [setAuthState, fetchState])
+  }, [setAuthState])
 }
 
 function CloseConfirmModal() {
@@ -259,6 +259,7 @@ function App() {
       <ThemeProvider>
         <LoginPage />
         <ToastContainer />
+        <CloseConfirmModal />
       </ThemeProvider>
     )
   }

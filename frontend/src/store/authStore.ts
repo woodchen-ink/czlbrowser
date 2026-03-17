@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export interface AuthUserInfo {
-  id: string
+  id: number
   username: string
   nickname: string
   email: string
@@ -19,6 +19,7 @@ interface AuthStore {
   state: AuthState
   loading: boolean
   loginPending: boolean
+  loginError: string
 
   /** 从后端获取当前认证状态 */
   fetchState: () => Promise<void>
@@ -39,6 +40,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   state: { loggedIn: false, level: '' },
   loading: true,
   loginPending: false,
+  loginError: '',
 
   fetchState: async () => {
     try {
@@ -56,7 +58,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   login: async () => {
     try {
-      set({ loginPending: true })
+      set({ loginPending: true, loginError: '' })
       const app = goApp()
       if (!app?.AuthLogin) return
       await app.AuthLogin()
@@ -72,13 +74,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
       if (app?.AuthLogout) {
         await app.AuthLogout()
       }
-      set({ state: { loggedIn: false, level: '' }, loginPending: false })
+      set({ state: { loggedIn: false, level: '' }, loginPending: false, loginError: '' })
     } catch {
       // 忽略登出错误
     }
   },
 
   setAuthState: (state: AuthState) => {
-    set({ state, loading: false, loginPending: false })
+    set({ state, loading: false, loginPending: false, loginError: '' })
   },
 }))

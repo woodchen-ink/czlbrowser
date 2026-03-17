@@ -1,7 +1,7 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/config"
+	"czl-browser/backend/internal/config"
 	"path/filepath"
 	"testing"
 )

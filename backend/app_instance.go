@@ -2,9 +2,9 @@ package backend
 
 import (
 	"bytes"
-	"czl-chrome/backend/internal/browser"
-	"czl-chrome/backend/internal/logger"
-	"czl-chrome/backend/internal/proxy"
+	"czl-browser/backend/internal/browser"
+	"czl-browser/backend/internal/logger"
+	"czl-browser/backend/internal/proxy"
 	"encoding/json"
 	"errors"
 	"fmt"

@@ -1,7 +1,7 @@
 export namespace auth {
 	
 	export class UserInfo {
-	    id: string;
+	    id: number;
 	    username: string;
 	    nickname: string;
 	    email: string;

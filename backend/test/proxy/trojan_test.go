@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"czl-chrome/backend/internal/proxy"
+	"czl-browser/backend/internal/proxy"
 )
 
 func TestTrojanClashYAML(t *testing.T) {

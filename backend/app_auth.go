@@ -1,12 +1,11 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/auth"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/auth"
+	"czl-browser/backend/internal/logger"
 	"fmt"
 	"os/exec"
 	goruntime "runtime"
-	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -31,46 +30,28 @@ func (a *App) AuthLogin() error {
 		return fmt.Errorf("认证模块未初始化")
 	}
 
-	authURL, err := a.authMgr.StartLogin(a.ctx)
+	authURL, err := a.authMgr.StartLogin(a.ctx, func(result auth.LoginResult) {
+		if a.ctx == nil {
+			return
+		}
+		if result.Success {
+			runtime.EventsEmit(a.ctx, "auth:login:success", result.State)
+		} else {
+			runtime.EventsEmit(a.ctx, "auth:login:error", result.Error)
+		}
+	})
 	if err != nil {
 		log.Error("启动 OAuth2 登录失败", logger.F("error", err))
 		return fmt.Errorf("启动登录失败: %w", err)
 	}
 
 	// 打开系统浏览器进行授权
-	if err := openBrowser(authURL); err != nil {
+	if err := openSystemBrowser(authURL); err != nil {
 		log.Warn("打开浏览器失败，返回 URL 供手动访问", logger.F("error", err))
 		if a.ctx != nil {
 			runtime.EventsEmit(a.ctx, "auth:login:url", authURL)
 		}
 	}
-
-	// 异步等待登录完成，通过事件通知前端
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-		timeout := time.After(5 * time.Minute)
-
-		for {
-			select {
-			case <-ticker.C:
-				state := a.authMgr.GetAuthState()
-				if state.LoggedIn {
-					if a.ctx != nil {
-						runtime.EventsEmit(a.ctx, "auth:login:success", state)
-					}
-					return
-				}
-			case <-timeout:
-				if a.ctx != nil {
-					runtime.EventsEmit(a.ctx, "auth:login:timeout", nil)
-				}
-				return
-			case <-a.ctx.Done():
-				return
-			}
-		}
-	}()
 
 	return nil
 }
@@ -95,8 +76,8 @@ func (a *App) AuthRefresh() (AuthState, error) {
 	return a.authMgr.GetAuthState(), nil
 }
 
-// openBrowser 打开系统默认浏览器
-func openBrowser(url string) error {
+// openSystemBrowser 打开系统默认浏览器
+func openSystemBrowser(url string) error {
 	switch goruntime.GOOS {
 	case "windows":
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()

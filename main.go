@@ -1,8 +1,8 @@
 package main
 
 import (
-	"czl-chrome/backend"
 	"context"
+	"czl-browser/backend"
 	"embed"
 	"log"
 	"os"

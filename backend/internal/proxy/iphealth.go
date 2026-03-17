@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/logger"
 )
 
 const ipInfoQueryURL = "https://ip.czl.net/api/query"

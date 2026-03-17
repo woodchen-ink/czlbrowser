@@ -2,8 +2,8 @@ package proxy
 
 import (
 	"crypto/sha256"
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/logger"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"

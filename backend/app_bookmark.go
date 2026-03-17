@@ -1,8 +1,8 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/logger"
 )
 
 type BrowserBookmark = config.BrowserBookmark

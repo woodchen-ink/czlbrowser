@@ -1,8 +1,8 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/browser"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/browser"
+	"czl-browser/backend/internal/logger"
 	"fmt"
 )
 

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/proxy"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/proxy"
 )
 
 // 模拟数据库中实际存储的 Clash YAML 格式代理配置

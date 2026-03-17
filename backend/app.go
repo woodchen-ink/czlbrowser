@@ -1,13 +1,13 @@
 package backend
 
 import (
-	"czl-chrome/backend/internal/auth"
-	"czl-chrome/backend/internal/browser"
-	"czl-chrome/backend/internal/config"
-	"czl-chrome/backend/internal/database"
-	"czl-chrome/backend/internal/launchcode"
-	"czl-chrome/backend/internal/logger"
-	"czl-chrome/backend/internal/proxy"
+	"czl-browser/backend/internal/auth"
+	"czl-browser/backend/internal/browser"
+	"czl-browser/backend/internal/config"
+	"czl-browser/backend/internal/database"
+	"czl-browser/backend/internal/launchcode"
+	"czl-browser/backend/internal/logger"
+	"czl-browser/backend/internal/proxy"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -233,6 +233,10 @@ func (a *App) applyRuntimeConfig(cfg config.RuntimeConfig) {
 func (a *App) shutdown(ctx context.Context) {
 	log := logger.New("App")
 	log.Info("应用正在关闭...")
+	// 关闭 OAuth2 回调服务器（避免 goroutine 泄漏阻塞退出）
+	if a.authMgr != nil {
+		a.authMgr.Shutdown()
+	}
 	a.stopRuntimeServices()
 	a.finalizeShutdown()
 }

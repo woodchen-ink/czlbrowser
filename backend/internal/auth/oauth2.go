@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rand"
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/logger"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,7 +18,7 @@ import (
 
 // UserInfo OAuth2 用户信息
 type UserInfo struct {
-	ID       string `json:"id"`
+	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
 	Email    string `json:"email"`
@@ -87,8 +87,16 @@ func (m *Manager) GetAuthState() AuthState {
 	}
 }
 
-// StartLogin 启动 OAuth2 登录流程，返回授权 URL
-func (m *Manager) StartLogin(ctx context.Context) (string, error) {
+// LoginResult 登录结果回调
+type LoginResult struct {
+	Success bool
+	State   AuthState
+	Error   string
+}
+
+// StartLogin 启动 OAuth2 登录流程，返回授权 URL。
+// onResult 在异步登录完成（成功或失败）时被调用。
+func (m *Manager) StartLogin(ctx context.Context, onResult func(LoginResult)) (string, error) {
 	log := logger.New("Auth")
 
 	// 关闭上一次可能残留的回调服务器
@@ -107,7 +115,7 @@ func (m *Manager) StartLogin(ctx context.Context) (string, error) {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", oauthRedirectPort))
 	if err != nil {
-		return "", fmt.Errorf("回调端口 %d 被占用，请检查或修改 config.yaml 中的 auth.redirect_port", oauthRedirectPort)
+		return "", fmt.Errorf("回调端口 %d 被占用", oauthRedirectPort)
 	}
 
 	server := &http.Server{}
@@ -152,14 +160,22 @@ func (m *Manager) StartLogin(ctx context.Context) (string, error) {
 	go func() {
 		defer m.shutdownCallbackServer()
 
+		notifyError := func(msg string) {
+			if onResult != nil {
+				onResult(LoginResult{Success: false, Error: msg})
+			}
+		}
+
 		select {
 		case code := <-codeCh:
 			if err := m.exchangeToken(code, redirectURI); err != nil {
 				log.Error("令牌交换失败", logger.F("error", err))
+				notifyError(fmt.Sprintf("令牌交换失败: %v", err))
 				return
 			}
 			if err := m.fetchUserInfo(); err != nil {
 				log.Error("获取用户信息失败", logger.F("error", err))
+				notifyError(fmt.Sprintf("获取用户信息失败: %v", err))
 				return
 			}
 			m.saveToken()
@@ -167,10 +183,15 @@ func (m *Manager) StartLogin(ctx context.Context) (string, error) {
 				logger.F("username", m.user.Username),
 				logger.F("level", m.parseHighestLevel()),
 			)
+			if onResult != nil {
+				onResult(LoginResult{Success: true, State: m.GetAuthState()})
+			}
 		case err := <-errCh:
 			log.Error("OAuth2 回调失败", logger.F("error", err))
+			notifyError(fmt.Sprintf("回调失败: %v", err))
 		case <-time.After(5 * time.Minute):
 			log.Warn("OAuth2 登录超时")
+			notifyError("登录超时，请重试")
 		case <-ctx.Done():
 			log.Info("OAuth2 登录流程取消")
 		}
@@ -186,6 +207,11 @@ func (m *Manager) StartLogin(ctx context.Context) (string, error) {
 
 	log.Info("OAuth2 授权链接已生成", logger.F("url", authURL))
 	return authURL, nil
+}
+
+// Shutdown 应用退出时调用，关闭回调服务器释放资源
+func (m *Manager) Shutdown() {
+	m.shutdownCallbackServer()
 }
 
 // shutdownCallbackServer 关闭回调服务器

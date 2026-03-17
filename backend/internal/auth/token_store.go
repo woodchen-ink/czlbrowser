@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/logger"
 	"encoding/json"
 	"os"
 	"path/filepath"

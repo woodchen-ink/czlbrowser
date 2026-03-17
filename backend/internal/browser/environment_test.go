@@ -1,7 +1,7 @@
 package browser
 
 import (
-	"czl-chrome/backend/internal/config"
+	"czl-browser/backend/internal/config"
 	"errors"
 	"testing"
 )

@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"czl-chrome/backend/internal/logger"
+	"czl-browser/backend/internal/logger"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"

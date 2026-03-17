@@ -250,10 +250,6 @@ export function DeleteGroup(arg1) {
   return window['go']['main']['App']['DeleteGroup'](arg1);
 }
 
-export function FetchRemoteAuthorProfile(arg1, arg2) {
-  return window['go']['main']['App']['FetchRemoteAuthorProfile'](arg1, arg2);
-}
-
 export function ForceQuit() {
   return window['go']['main']['App']['ForceQuit']();
 }

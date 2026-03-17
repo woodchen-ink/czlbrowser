@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	"czl-chrome/backend/internal/config"
+	"czl-browser/backend/internal/config"
 	"strings"
 	"testing"
 )

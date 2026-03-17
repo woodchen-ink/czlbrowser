@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CZL Browser is a Windows desktop application for managing isolated browser instances with per-instance proxy binding. Built with **Wails v2** (Go backend + React/TypeScript frontend embedded in a WebView2 window), it compiles to a single `czl-chrome.exe`.
+CZL Browser is a Windows desktop application for managing isolated browser instances with per-instance proxy binding. Built with **Wails v2** (Go backend + React/TypeScript frontend embedded in a WebView2 window), it compiles to a single `czl-browser.exe`.
 
 Key capabilities: multi-profile browser management, proxy pool (HTTP/SOCKS5/Clash/Xray/Sing-Box), Chrome fingerprint spoofing, quick launch (Ctrl+K), backup/restore, OAuth2 login via CZL Connect.
 
@@ -16,7 +16,7 @@ bat\dev.bat
 # Or directly:
 wails dev
 
-# Production build → build/bin/czl-chrome.exe
+# Production build → build/bin/czl-browser.exe
 bat\build.bat
 
 # Installer packaging (requires NSIS)
@@ -115,7 +115,7 @@ frontend/src/
 ## Key Conventions
 
 - **Language**: All UI text, log messages, and comments are in Chinese
-- **Go module**: `czl-chrome` (not `czl-browser`)
+- **Go module**: `czl-browser` (not `czl-browser`)
 - **CSS**: Tailwind CSS with CSS variables defined in the theme (no hardcoded Tailwind colors)
 - **State management**: Zustand (lightweight stores in `src/store/`)
 - **Icons**: Lucide React only (no emoji in UI)

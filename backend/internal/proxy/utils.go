@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"czl-chrome/backend/internal/config"
+	"czl-browser/backend/internal/config"
 
 	"gopkg.in/yaml.v3"
 )

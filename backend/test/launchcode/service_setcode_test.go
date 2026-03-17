@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"czl-chrome/backend/internal/launchcode"
+	"czl-browser/backend/internal/launchcode"
 )
 
 func TestSetCodeAndResolveCaseInsensitive(t *testing.T) {

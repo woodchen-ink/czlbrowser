@@ -2,6 +2,9 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
+REM 确保 Go 和 Wails 在 PATH 中
+set "PATH=C:\Program Files\Go\bin;%USERPROFILE%\go\bin;%PATH%"
+
 REM 切换到项目根目录（脚本所在目录的上一级）
 cd /d "%~dp0.."
 
@@ -139,7 +142,7 @@ echo ========================================
 echo   ✓ 构建成功！
 echo ========================================
 echo.
-echo 可执行文件位置: build\bin\czl-chrome.exe
+echo 可执行文件位置: build\bin\czl-browser.exe
 echo.
 
 REM 清理代理配置
