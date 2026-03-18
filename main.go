@@ -90,8 +90,17 @@ func main() {
 
 	log.Printf("应用根目录: %s (dev=%v)", appRoot, isDevMode)
 
-	// 加载配置
-	cfg, err := backend.LoadConfig(filepath.Join(appRoot, "config.yaml"))
+	// 确定配置文件路径：dev 模式使用项目目录，生产模式使用 %APPDATA%
+	var configPath string
+	if isDevMode {
+		configPath = filepath.Join(appRoot, "config.yaml")
+	} else {
+		configPath = backend.ConfigPath()
+	}
+	log.Printf("配置文件路径: %s", configPath)
+
+	// 加载配置（磁盘文件不存在时回退到嵌入默认配置）
+	cfg, err := backend.LoadConfig(configPath)
 	if err != nil {
 		log.Printf("加载配置失败，使用默认配置: %v", err)
 		cfg = backend.DefaultConfig()
@@ -99,6 +108,7 @@ func main() {
 
 	// 创建应用实例
 	app := NewApp(appRoot)
+	app.SetDevMode(isDevMode)
 
 	var wailsCtx context.Context
 

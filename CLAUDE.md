@@ -108,6 +108,7 @@ frontend/src/
 - **Config**: `config.yaml` at app root. Loaded with auto-repair on missing fields. Supports runtime reload via `ReloadConfig()`.
 - **Proxy runtime**: `bin/xray.exe` and `bin/sing-box.exe` shipped in-repo. No external downloads needed.
 - **Chrome kernels**: User-provided, placed in `chrome/` directory. Managed through the UI's core management page.
+- **Timezone spoofing**: Browser launch strips the stored `--timezone` flag before starting Chromium, then applies timezone override through browser-level CDP auto-attach so existing and newly opened page targets stay aligned with the proxy exit locale (or manual timezone fallback).
 - **Auth**: OAuth2 via CZL Connect (`connect.czl.net`). Tokens stored in `data/auth_token.json`. App requires login to use. User level (groups field: t0-t5, viewer, admin) displayed in Topbar. Auth state managed by `authStore` (Zustand).
 - **Profile quota**: Instance create/copy flows are not blocked by `MaxProfileLimit`; quota values are informational only.
 - **Quota UI**: Dashboard and Browser List no longer expose redeem/expand quota entry points.

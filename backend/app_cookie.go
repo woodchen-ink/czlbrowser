@@ -29,22 +29,28 @@ type CookieInfo struct {
 
 // cdpTarget 表示 /json 接口返回的调试目标
 type cdpTarget struct {
+	TargetID             string `json:"targetId"`
 	WebSocketDebuggerUrl string `json:"webSocketDebuggerUrl"`
 	Type                 string `json:"type"`
+	Attached             bool   `json:"attached"`
 }
 
 // cdpMessage 是 CDP 协议消息结构
 type cdpMessage struct {
-	Id     int            `json:"id"`
-	Method string         `json:"method,omitempty"`
-	Params map[string]any `json:"params,omitempty"`
+	Id        int            `json:"id"`
+	Method    string         `json:"method,omitempty"`
+	Params    map[string]any `json:"params,omitempty"`
+	SessionID string         `json:"sessionId,omitempty"`
 }
 
 // cdpResponse 是 CDP 协议响应结构
 type cdpResponse struct {
-	Id     int            `json:"id"`
-	Result map[string]any `json:"result,omitempty"`
-	Error  *struct {
+	Id        int            `json:"id,omitempty"`
+	Method    string         `json:"method,omitempty"`
+	Params    map[string]any `json:"params,omitempty"`
+	SessionID string         `json:"sessionId,omitempty"`
+	Result    map[string]any `json:"result,omitempty"`
+	Error     *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }

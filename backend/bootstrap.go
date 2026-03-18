@@ -60,6 +60,10 @@ func DefaultConfig() *Config {
 	return appconfig.DefaultConfig()
 }
 
+func ConfigPath() string {
+	return appconfig.ConfigPath()
+}
+
 func RunTray(cb TrayCallbacks) {
 	apptray.Run(cb)
 }

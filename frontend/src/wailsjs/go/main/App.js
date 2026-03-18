@@ -334,6 +334,10 @@ export function SaveBrowserSettings(arg1) {
   return window['go']['main']['App']['SaveBrowserSettings'](arg1);
 }
 
+export function SetDevMode(arg1) {
+  return window['go']['main']['App']['SetDevMode'](arg1);
+}
+
 export function SetLogLevel(arg1) {
   return window['go']['main']['App']['SetLogLevel'](arg1);
 }

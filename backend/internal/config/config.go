@@ -174,12 +174,38 @@ type InterceptorConfig struct {
 	SensitiveFields []string `yaml:"sensitive_fields"` // 敏感字段（脱敏）
 }
 
-// Load 加载配置文件
+// ConfigDir 返回用户配置目录 (%APPDATA%\CZL Browser)。
+// 生产环境下 config.yaml 保存在此目录，安装目录不暴露配置文件。
+func ConfigDir() string {
+	appData := os.Getenv("APPDATA")
+	if appData == "" {
+		appData, _ = os.UserConfigDir()
+	}
+	return filepath.Join(appData, "CZL Browser")
+}
+
+// ConfigPath 返回用户配置文件完整路径。
+func ConfigPath() string {
+	return filepath.Join(ConfigDir(), "config.yaml")
+}
+
+// LoadFromEmbedded 从编译时嵌入的默认配置加载。
+func LoadFromEmbedded() (*Config, error) {
+	var config Config
+	if err := yaml.Unmarshal(DefaultConfigYAML, &config); err != nil {
+		return DefaultConfig(), nil
+	}
+	normalizeConfig(&config)
+	return &config, nil
+}
+
+// Load 加载配置文件。
+// 优先读取 configPath 指定的磁盘文件；若不存在则回退到编译时嵌入的默认配置。
 func Load(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return DefaultConfig(), nil
+			return LoadFromEmbedded()
 		}
 		return nil, fmt.Errorf("读取配置文件失败: %w", err)
 	}

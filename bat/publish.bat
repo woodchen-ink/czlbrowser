@@ -245,4 +245,5 @@ echo 安装包位置: publish\output\CZLBrowser-Setup-!VERSION!.exe
 echo.
 echo 提示：用户安装后可将旧的 data\ 目录粘贴到安装目录覆盖初始数据
 echo.
-pause
+
+exit /b 0

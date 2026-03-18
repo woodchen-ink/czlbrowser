@@ -7,7 +7,7 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "http://127.0.0.1:5218",
   "author": {
-    "name": "Ant Chrome Team",
+    "name": "CZL Browser Team",
     "email": "team@example.com"
   },
   "info": {

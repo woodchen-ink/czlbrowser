@@ -63,6 +63,58 @@ func TestUpsertKeyValueArg(t *testing.T) {
 	}
 }
 
+func TestExtractSwitchValueArg(t *testing.T) {
+	t.Parallel()
+
+	args := []string{"--lang=zh-CN", "--timezone=America/New_York", "--flag", "--timezone", "Europe/Berlin"}
+	filtered, timezone := extractSwitchValueArg(args, "--timezone")
+	if timezone != "Europe/Berlin" {
+		t.Fatalf("unexpected timezone: %q", timezone)
+	}
+	for _, arg := range filtered {
+		if arg == "--timezone=America/New_York" || arg == "--timezone" || arg == "Europe/Berlin" {
+			t.Fatalf("timezone args should have been removed: %#v", filtered)
+		}
+	}
+}
+
+func TestShouldManageStealthTarget(t *testing.T) {
+	t.Parallel()
+
+	if !shouldManageStealthTarget("page") {
+		t.Fatalf("page target should be managed")
+	}
+	if !shouldManageStealthTarget("background_page") {
+		t.Fatalf("background_page target should be managed")
+	}
+	if shouldManageStealthTarget("service_worker") {
+		t.Fatalf("service_worker target should not be managed")
+	}
+}
+
+func TestParseAttachedTargetEvent(t *testing.T) {
+	t.Parallel()
+
+	event := cdpResponse{
+		Method: "Target.attachedToTarget",
+		Params: map[string]any{
+			"sessionId": "session-1",
+			"targetInfo": map[string]any{
+				"targetId": "target-1",
+				"type":     "page",
+			},
+		},
+	}
+
+	sessionID, targetID, targetType, ok := parseAttachedTargetEvent(event)
+	if !ok {
+		t.Fatalf("expected attachedToTarget event to parse")
+	}
+	if sessionID != "session-1" || targetID != "target-1" || targetType != "page" {
+		t.Fatalf("unexpected parse result: %q %q %q", sessionID, targetID, targetType)
+	}
+}
+
 func TestDefaultLanguageByCountryCode(t *testing.T) {
 	t.Parallel()
 

@@ -190,8 +190,21 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	args = append(args, profile.FingerprintArgs...)
 	args = append(args, profile.LaunchArgs...)
 	args = append(args, normalizeNonEmptyStrings(extraLaunchArgs)...)
+	var manualTimezone string
+	args, manualTimezone = extractSwitchValueArg(args, "--timezone")
 	var proxyTimezone string
 	args, proxyTimezone = a.applyProxyLocaleArgs(args, profile.ProxyId, resolvedProxyConfig, proxies, log, profileId)
+	effectiveTimezone := strings.TrimSpace(proxyTimezone)
+	if effectiveTimezone == "" {
+		effectiveTimezone = strings.TrimSpace(manualTimezone)
+	} else if manualTimezone != "" && !strings.EqualFold(effectiveTimezone, manualTimezone) {
+		log.Info("代理出口时区覆盖手动时区配置",
+			logger.F("profile_id", profileId),
+			logger.F("manual_timezone", manualTimezone),
+			logger.F("proxy_timezone", effectiveTimezone),
+		)
+	}
+	proxyTimezone = effectiveTimezone
 	args = autoFillWebGLArgs(args, log, profileId)
 	// 有代理时，若用户未配置 WebRTC 策略，则强制禁用非代理 UDP 防止真实 IP 泄露
 	if effectiveProxy != "" && effectiveProxy != "direct://" {
@@ -749,6 +762,44 @@ func upsertKeyValueArg(args []string, key string, value string) []string {
 		out = append(out, replacement)
 	}
 	return out
+}
+
+func extractSwitchValueArg(args []string, key string) ([]string, string) {
+	key = strings.TrimSpace(key)
+	if key == "" || len(args) == 0 {
+		return args, ""
+	}
+
+	prefix := strings.ToLower(key + "=")
+	out := make([]string, 0, len(args))
+	value := ""
+
+	for i := 0; i < len(args); i++ {
+		current := strings.TrimSpace(args[i])
+		lower := strings.ToLower(current)
+
+		if strings.HasPrefix(lower, prefix) {
+			v := strings.TrimSpace(current[len(key)+1:])
+			if v != "" {
+				value = v
+			}
+			continue
+		}
+		if strings.EqualFold(current, key) {
+			if i+1 < len(args) {
+				next := strings.TrimSpace(args[i+1])
+				if next != "" && !strings.HasPrefix(next, "--") {
+					value = next
+					i++
+				}
+			}
+			continue
+		}
+
+		out = append(out, current)
+	}
+
+	return out, value
 }
 
 func normalizeNonEmptyStrings(items []string) []string {

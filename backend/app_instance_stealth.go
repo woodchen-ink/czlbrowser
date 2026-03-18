@@ -6,24 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-// stealthScript 是注入到每个页面的反检测 JS 脚本。
-// 通过 CDP Page.addScriptToEvaluateOnNewDocument 在页面 JS 执行前注入。
-// 参考 puppeteer-extra-plugin-stealth 的实现。
+// stealthScript 会注入到每个页面的新文档上下文中，补齐常见的反自动化探针。
 const stealthScript = `
-// === 1. navigator.webdriver ===
-// 标准 Chrome 在 CDP 模式下 navigator.webdriver 为 true，需要覆盖为 false
 Object.defineProperty(navigator, 'webdriver', {
   get: () => false,
   configurable: true,
 });
 
-// === 2. window.chrome ===
-// 标准 Chrome 有 window.chrome 对象，但某些自动化模式下缺失
 if (!window.chrome) {
   window.chrome = {};
 }
@@ -31,9 +27,6 @@ if (!window.chrome.runtime) {
   window.chrome.runtime = {};
 }
 
-// === 3. Permissions API ===
-// 真实 Chrome 中 Notification permission 查询返回的状态由用户设置决定
-// CDP 模式下可能返回异常值，覆盖 query 方法使其返回正常
 const originalQuery = window.navigator.permissions.query;
 window.navigator.permissions.query = function(parameters) {
   if (parameters.name === 'notifications') {
@@ -42,8 +35,6 @@ window.navigator.permissions.query = function(parameters) {
   return originalQuery.call(this, parameters);
 };
 
-// === 4. plugins & mimeTypes ===
-// 无痕/自动化模式下 plugins 可能为空数组，真实 Chrome 至少有几个默认插件
 if (navigator.plugins.length === 0) {
   Object.defineProperty(navigator, 'plugins', {
     get: () => {
@@ -60,18 +51,6 @@ if (navigator.plugins.length === 0) {
   });
 }
 
-// === 5. WebGL 调试扩展 ===
-// 如果 WEBGL_debug_renderer_info 不可用，不修改——标准 Chrome 默认支持
-// 但部分检测站会检查 getParameter 的实现是否被篡改
-// 这里不修改 WebGL 返回值，由启动参数或真实硬件决定（标准 Chrome 返回真实值，自洽）
-
-// === 6. 屏幕分辨率一致性 ===
-// outerWidth/outerHeight 和 innerWidth/innerHeight 在真实浏览器中有细微差异
-// 自动化模式下有时完全相等，这里不强制修改——标准 Chrome 本身就有正常差异
-
-// === 7. 隐藏 CDP Runtime.enable 痕迹 ===
-// 某些检测站通过检查全局错误处理器来判断 CDP 是否被启用
-// 这里通过覆盖 Error.prepareStackTrace 来隐藏 CDP 注入的调用栈
 const originalPrepareStackTrace = Error.prepareStackTrace;
 if (originalPrepareStackTrace) {
   Error.prepareStackTrace = function(error, structuredStackTrace) {
@@ -82,146 +61,372 @@ if (originalPrepareStackTrace) {
 }
 `
 
-// injectStealthScripts 通过 CDP 注入反检测脚本到浏览器实例。
-// 使用 Page.addScriptToEvaluateOnNewDocument 确保脚本在每个新页面的 JS 执行前运行。
-// 若 timezone 非空，则通过 Emulation.setTimezoneOverride 覆盖浏览器时区，使其与代理出口 IP 一致。
-// 在浏览器调试端口就绪后异步调用。
-func injectStealthScripts(debugPort int, log *logger.Logger, profileId string, timezone string) {
-	// 等待 CDP /json 端点稳定可用
-	var wsURL string
-	for i := 0; i < 10; i++ {
-		time.Sleep(300 * time.Millisecond)
-		url, err := getCDPWebSocketURL(debugPort)
-		if err == nil && url != "" {
-			wsURL = url
-			break
-		}
-	}
-	if wsURL == "" {
-		log.Warn("CDP 连接失败，跳过 stealth 注入",
-			logger.F("profile_id", profileId),
-			logger.F("debug_port", debugPort),
-		)
-		return
-	}
+type cdpBrowserVersion struct {
+	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+}
 
+type cdpConn struct {
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+	stateMu sync.Mutex
+	nextID  int
+	pending map[int]chan cdpResponse
+	events  chan cdpResponse
+	closed  chan struct{}
+	readErr error
+}
+
+func newCDPConn(wsURL string) (*cdpConn, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		log.Warn("CDP WebSocket 连接失败，跳过 stealth 注入",
-			logger.F("profile_id", profileId),
-			logger.F("error", err.Error()),
-		)
-		return
+		return nil, err
 	}
-	defer conn.Close()
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	conn.SetReadDeadline(time.Time{})
 
-	// Page.addScriptToEvaluateOnNewDocument: 在每个新文档加载前注入脚本
-	msg := cdpMessage{
-		Id:     1,
-		Method: "Page.addScriptToEvaluateOnNewDocument",
-		Params: map[string]any{
-			"source": stealthScript,
-		},
+	c := &cdpConn{
+		conn:    conn,
+		nextID:  1,
+		pending: make(map[int]chan cdpResponse),
+		events:  make(chan cdpResponse, 256),
+		closed:  make(chan struct{}),
 	}
-	if err := conn.WriteJSON(msg); err != nil {
-		log.Warn("CDP stealth 脚本发送失败",
-			logger.F("profile_id", profileId),
-			logger.F("error", err.Error()),
-		)
-		return
-	}
+	go c.readLoop()
+	return c, nil
+}
 
-	var resp cdpResponse
-	if err := conn.ReadJSON(&resp); err != nil {
-		log.Warn("CDP stealth 脚本响应读取失败",
-			logger.F("profile_id", profileId),
-			logger.F("error", err.Error()),
-		)
-		return
-	}
-	if resp.Error != nil {
-		log.Warn("CDP stealth 脚本注入失败",
-			logger.F("profile_id", profileId),
-			logger.F("error", resp.Error.Message),
-		)
-		return
-	}
+func (c *cdpConn) readLoop() {
+	defer close(c.closed)
+	defer close(c.events)
 
-	// 对当前已打开的页面也执行一次脚本（addScriptToEvaluateOnNewDocument 只对后续页面生效）
-	evalMsg := cdpMessage{
-		Id:     2,
-		Method: "Runtime.evaluate",
-		Params: map[string]any{
-			"expression": stealthScript,
-		},
-	}
-	_ = conn.WriteJSON(evalMsg)
-	_ = conn.ReadJSON(&resp)
-
-	log.Info("stealth 脚本注入成功",
-		logger.F("profile_id", profileId),
-		logger.F("debug_port", debugPort),
-	)
-
-	// 通过 CDP 覆盖浏览器时区，使 Intl.DateTimeFormat / new Date() 等 API 返回与代理 IP 一致的时区
-	if timezone != "" {
-		tzMsg := cdpMessage{
-			Id:     3,
-			Method: "Emulation.setTimezoneOverride",
-			Params: map[string]any{
-				"timezoneId": timezone,
-			},
+	for {
+		var msg cdpResponse
+		if err := c.conn.ReadJSON(&msg); err != nil {
+			c.failPending(err)
+			c.stateMu.Lock()
+			c.readErr = err
+			c.stateMu.Unlock()
+			return
 		}
-		if err := conn.WriteJSON(tzMsg); err != nil {
-			log.Warn("CDP 时区覆盖发送失败",
-				logger.F("profile_id", profileId),
-				logger.F("timezone", timezone),
-				logger.F("error", err.Error()),
-			)
-		} else if err := conn.ReadJSON(&resp); err != nil {
-			log.Warn("CDP 时区覆盖响应读取失败",
-				logger.F("profile_id", profileId),
-				logger.F("timezone", timezone),
-				logger.F("error", err.Error()),
-			)
-		} else if resp.Error != nil {
-			log.Warn("CDP 时区覆盖失败",
-				logger.F("profile_id", profileId),
-				logger.F("timezone", timezone),
-				logger.F("error", resp.Error.Message),
-			)
-		} else {
-			log.Info("CDP 时区覆盖成功",
-				logger.F("profile_id", profileId),
-				logger.F("timezone", timezone),
-			)
+
+		if msg.Id != 0 {
+			c.stateMu.Lock()
+			waiter := c.pending[msg.Id]
+			delete(c.pending, msg.Id)
+			c.stateMu.Unlock()
+			if waiter != nil {
+				waiter <- msg
+				close(waiter)
+			}
+			continue
+		}
+
+		select {
+		case c.events <- msg:
+		case <-c.closed:
+			return
 		}
 	}
 }
 
-// getCDPWebSocketURL 从调试端口获取第一个 page target 的 WebSocket URL
-func getCDPWebSocketURL(debugPort int) (string, error) {
+func (c *cdpConn) failPending(err error) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	for id, waiter := range c.pending {
+		waiter <- cdpResponse{Error: &struct {
+			Message string `json:"message"`
+		}{Message: err.Error()}}
+		close(waiter)
+		delete(c.pending, id)
+	}
+}
+
+func (c *cdpConn) call(method string, params map[string]any, sessionID string) (map[string]any, error) {
+	c.stateMu.Lock()
+	id := c.nextID
+	c.nextID++
+	waiter := make(chan cdpResponse, 1)
+	c.pending[id] = waiter
+	c.stateMu.Unlock()
+
+	msg := cdpMessage{
+		Id:        id,
+		Method:    method,
+		Params:    params,
+		SessionID: sessionID,
+	}
+
+	c.writeMu.Lock()
+	err := c.conn.WriteJSON(msg)
+	c.writeMu.Unlock()
+	if err != nil {
+		c.stateMu.Lock()
+		delete(c.pending, id)
+		c.stateMu.Unlock()
+		return nil, err
+	}
+
+	select {
+	case resp, ok := <-waiter:
+		if !ok {
+			return nil, fmt.Errorf("CDP 连接已关闭")
+		}
+		if resp.Error != nil {
+			return nil, fmt.Errorf("%s", strings.TrimSpace(resp.Error.Message))
+		}
+		return resp.Result, nil
+	case <-time.After(5 * time.Second):
+		c.stateMu.Lock()
+		delete(c.pending, id)
+		c.stateMu.Unlock()
+		return nil, fmt.Errorf("CDP 调用超时: %s", method)
+	case <-c.closed:
+		c.stateMu.Lock()
+		readErr := c.readErr
+		c.stateMu.Unlock()
+		if readErr != nil {
+			return nil, readErr
+		}
+		return nil, fmt.Errorf("CDP 连接已关闭")
+	}
+}
+
+func (c *cdpConn) close() {
+	_ = c.conn.Close()
+	<-c.closed
+}
+
+// injectStealthScripts 通过浏览器级 CDP 会话统一管理所有 target，
+// 确保现有标签页和后续新开的标签页/弹窗都会收到同一套 stealth 与时区覆盖。
+func injectStealthScripts(debugPort int, log *logger.Logger, profileID string, timezone string) {
+	wsURL, err := waitCDPBrowserWebSocketURL(debugPort, 10, 300*time.Millisecond)
+	if err != nil {
+		log.Warn("浏览器级 CDP 连接准备失败，跳过 stealth 注入",
+			logger.F("profile_id", profileID),
+			logger.F("debug_port", debugPort),
+			logger.F("error", err.Error()),
+		)
+		return
+	}
+
+	conn, err := newCDPConn(wsURL)
+	if err != nil {
+		log.Warn("浏览器级 CDP WebSocket 连接失败，跳过 stealth 注入",
+			logger.F("profile_id", profileID),
+			logger.F("error", err.Error()),
+		)
+		return
+	}
+	defer conn.close()
+
+	if _, err := conn.call("Target.setAutoAttach", map[string]any{
+		"autoAttach":             true,
+		"waitForDebuggerOnStart": false,
+		"flatten":                true,
+	}, ""); err != nil {
+		log.Warn("启用浏览器级 target 自动附加失败",
+			logger.F("profile_id", profileID),
+			logger.F("error", err.Error()),
+		)
+		return
+	}
+	_, _ = conn.call("Target.setDiscoverTargets", map[string]any{"discover": true}, "")
+
+	var appliedMu sync.Mutex
+	appliedTargets := make(map[string]struct{})
+
+	markApplied := func(targetID string) bool {
+		targetID = strings.TrimSpace(targetID)
+		if targetID == "" {
+			return false
+		}
+		appliedMu.Lock()
+		defer appliedMu.Unlock()
+		if _, exists := appliedTargets[targetID]; exists {
+			return false
+		}
+		appliedTargets[targetID] = struct{}{}
+		return true
+	}
+
+	applySession := func(sessionID string, targetID string, targetType string) {
+		if !shouldManageStealthTarget(targetType) {
+			return
+		}
+		if !markApplied(targetID) {
+			return
+		}
+		if err := applyStealthToSession(conn, sessionID, timezone); err != nil {
+			log.Warn("target stealth/timezone 注入失败",
+				logger.F("profile_id", profileID),
+				logger.F("target_id", targetID),
+				logger.F("target_type", targetType),
+				logger.F("error", err.Error()),
+			)
+			return
+		}
+		log.Info("target stealth/timezone 注入成功",
+			logger.F("profile_id", profileID),
+			logger.F("target_id", targetID),
+			logger.F("target_type", targetType),
+			logger.F("timezone", timezone),
+		)
+	}
+
+	if err := attachStealthToExistingTargets(conn, applySession); err != nil {
+		log.Warn("补挂现有 target 失败",
+			logger.F("profile_id", profileID),
+			logger.F("error", err.Error()),
+		)
+	}
+
+	log.Info("浏览器级 stealth/timezone 自动附加已启用",
+		logger.F("profile_id", profileID),
+		logger.F("debug_port", debugPort),
+		logger.F("timezone", timezone),
+	)
+
+	for event := range conn.events {
+		sessionID, targetID, targetType, ok := parseAttachedTargetEvent(event)
+		if !ok {
+			continue
+		}
+		applySession(sessionID, targetID, targetType)
+	}
+}
+
+func attachStealthToExistingTargets(conn *cdpConn, applySession func(sessionID string, targetID string, targetType string)) error {
+	result, err := conn.call("Target.getTargets", nil, "")
+	if err != nil {
+		return err
+	}
+
+	targetInfos, ok := result["targetInfos"].([]any)
+	if !ok {
+		return nil
+	}
+
+	for _, raw := range targetInfos {
+		info, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		targetID := strings.TrimSpace(mapString(info, "targetId"))
+		targetType := strings.TrimSpace(mapString(info, "type"))
+		if targetID == "" || !shouldManageStealthTarget(targetType) {
+			continue
+		}
+
+		attachResult, err := conn.call("Target.attachToTarget", map[string]any{
+			"targetId": targetID,
+			"flatten":  true,
+		}, "")
+		if err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "already attached") {
+				continue
+			}
+			return err
+		}
+		sessionID := strings.TrimSpace(mapString(attachResult, "sessionId"))
+		if sessionID == "" {
+			continue
+		}
+		applySession(sessionID, targetID, targetType)
+	}
+	return nil
+}
+
+func applyStealthToSession(conn *cdpConn, sessionID string, timezone string) error {
+	if sessionID == "" {
+		return fmt.Errorf("empty session id")
+	}
+	if _, err := conn.call("Page.addScriptToEvaluateOnNewDocument", map[string]any{
+		"source": stealthScript,
+	}, sessionID); err != nil {
+		return fmt.Errorf("Page.addScriptToEvaluateOnNewDocument failed: %w", err)
+	}
+	if timezone != "" {
+		if _, err := conn.call("Emulation.setTimezoneOverride", map[string]any{
+			"timezoneId": timezone,
+		}, sessionID); err != nil {
+			return fmt.Errorf("Emulation.setTimezoneOverride failed: %w", err)
+		}
+	}
+	if _, err := conn.call("Runtime.evaluate", map[string]any{
+		"expression":            stealthScript,
+		"includeCommandLineAPI": false,
+	}, sessionID); err != nil {
+		return fmt.Errorf("Runtime.evaluate failed: %w", err)
+	}
+	return nil
+}
+
+func shouldManageStealthTarget(targetType string) bool {
+	switch strings.ToLower(strings.TrimSpace(targetType)) {
+	case "page", "background_page", "webview":
+		return true
+	default:
+		return false
+	}
+}
+
+func parseAttachedTargetEvent(event cdpResponse) (string, string, string, bool) {
+	if event.Method != "Target.attachedToTarget" || event.Params == nil {
+		return "", "", "", false
+	}
+	sessionID := strings.TrimSpace(mapString(event.Params, "sessionId"))
+	targetInfo, ok := event.Params["targetInfo"].(map[string]any)
+	if !ok {
+		return "", "", "", false
+	}
+	targetID := strings.TrimSpace(mapString(targetInfo, "targetId"))
+	targetType := strings.TrimSpace(mapString(targetInfo, "type"))
+	if sessionID == "" || targetID == "" {
+		return "", "", "", false
+	}
+	return sessionID, targetID, targetType, true
+}
+
+func waitCDPBrowserWebSocketURL(debugPort int, attempts int, delay time.Duration) (string, error) {
+	if attempts <= 0 {
+		attempts = 1
+	}
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		wsURL, err := getCDPBrowserWebSocketURL(debugPort)
+		if err == nil && wsURL != "" {
+			return wsURL, nil
+		}
+		lastErr = err
+		time.Sleep(delay)
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no websocket url")
+	}
+	return "", lastErr
+}
+
+func getCDPBrowserWebSocketURL(debugPort int) (string, error) {
 	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json", debugPort))
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json/version", debugPort))
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
 
-	var targets []cdpTarget
-	if err := json.Unmarshal(body, &targets); err != nil || len(targets) == 0 {
-		return "", fmt.Errorf("no targets")
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	for _, t := range targets {
-		if t.Type == "page" && t.WebSocketDebuggerUrl != "" {
-			return t.WebSocketDebuggerUrl, nil
-		}
+	var payload cdpBrowserVersion
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", err
 	}
-	if targets[0].WebSocketDebuggerUrl != "" {
-		return targets[0].WebSocketDebuggerUrl, nil
+	if strings.TrimSpace(payload.WebSocketDebuggerURL) == "" {
+		return "", fmt.Errorf("no websocket url")
 	}
-	return "", fmt.Errorf("no websocket url")
+	return strings.TrimSpace(payload.WebSocketDebuggerURL), nil
 }

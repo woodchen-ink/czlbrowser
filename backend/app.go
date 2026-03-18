@@ -39,6 +39,8 @@ type App struct {
 	speedScheduler *browser.ProxySpeedScheduler
 	authMgr        *auth.Manager
 	appRoot        string
+	configPath     string // 配置文件路径（dev: appRoot/config.yaml, 生产: %APPDATA%/CZL Browser/config.yaml）
+	devMode        bool   // 是否为开发模式
 
 	forceQuit        bool       // 强制退出标志，用于跳过 OnBeforeClose 的拦截
 	maintenanceMu    sync.Mutex // 维护类操作（初始化/导入/导出）互斥锁
@@ -53,6 +55,16 @@ func NewApp(appRoot string) *App {
 	return &App{
 		appRoot:        strings.TrimSpace(appRoot),
 		xrayBridgeRefs: make(map[string]string),
+	}
+}
+
+// SetDevMode 设置开发模式标志，影响配置文件路径选择。
+func (a *App) SetDevMode(dev bool) {
+	a.devMode = dev
+	if dev {
+		a.configPath = a.resolveAppPath("config.yaml")
+	} else {
+		a.configPath = config.ConfigPath()
 	}
 }
 

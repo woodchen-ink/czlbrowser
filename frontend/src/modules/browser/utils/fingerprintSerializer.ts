@@ -20,7 +20,7 @@ export interface FingerprintConfig {
   brand?: string           // --fingerprint-brand=
   platform?: string        // --fingerprint-platform=
   lang?: string            // --lang=
-  timezone?: string        // --timezone=
+  timezone?: string        // --timezone= 仅作为后端 CDP 时区覆盖配置存储
 
   // 屏幕与窗口
   resolution?: string      // --window-size=（预设值或 'custom'）
