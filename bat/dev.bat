@@ -4,7 +4,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0.."
 
 echo ========================================
-echo   Ant Chrome - Dev Launcher
+echo   CZL Browser - Dev Launcher
 echo ========================================
 echo.
 echo Current workdir: %CD%

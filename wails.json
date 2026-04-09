@@ -11,11 +11,11 @@
     "email": "team@example.com"
   },
   "info": {
-    "companyName": "Ant Chrome",
+    "companyName": "CZL LTD",
     "productName": "CZL Browser",
     "productVersion": "1.0.0",
-    "copyright": "Copyright © 2025",
-    "comments": "智能资讯聚合与AI处理平台"
+    "copyright": "Copyright © 2026",
+    "comments": "指纹浏览器"
   },
   "nsisType": "multiple",
   "obfuscated": false,

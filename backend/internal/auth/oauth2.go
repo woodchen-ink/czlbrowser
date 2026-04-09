@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"czl-browser/backend/internal/logger"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -45,7 +47,6 @@ type AuthState struct {
 // 内置 OAuth2 常量配置
 const (
 	oauthClientID     = "client_79372998"
-	oauthClientSecret = "1e3c0a04de4003a5bd92ec779afe2f95d1a36a387c77627b454bb2671dd90e22"
 	oauthAuthURL      = "https://connect.czl.net/oauth2/authorize"
 	oauthTokenURL     = "https://connect.czl.net/api/oauth2/token"
 	oauthUserInfoURL  = "https://connect.czl.net/api/oauth2/userinfo"
@@ -106,6 +107,11 @@ func (m *Manager) StartLogin(ctx context.Context, onResult func(LoginResult)) (s
 	if err != nil {
 		return "", fmt.Errorf("生成 state 失败: %w", err)
 	}
+	codeVerifier, err := generateCodeVerifier()
+	if err != nil {
+		return "", fmt.Errorf("生成 code_verifier 失败: %w", err)
+	}
+	codeChallenge := buildCodeChallenge(codeVerifier)
 
 	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/callback", oauthRedirectPort)
 
@@ -168,7 +174,7 @@ func (m *Manager) StartLogin(ctx context.Context, onResult func(LoginResult)) (s
 
 		select {
 		case code := <-codeCh:
-			if err := m.exchangeToken(code, redirectURI); err != nil {
+			if err := m.exchangeToken(code, redirectURI, codeVerifier); err != nil {
 				log.Error("令牌交换失败", logger.F("error", err))
 				notifyError(fmt.Sprintf("令牌交换失败: %v", err))
 				return
@@ -198,12 +204,15 @@ func (m *Manager) StartLogin(ctx context.Context, onResult func(LoginResult)) (s
 	}()
 
 	// 构建授权 URL
-	authURL := fmt.Sprintf("%s?response_type=code&client_id=%s&redirect_uri=%s&scope=read&state=%s",
-		oauthAuthURL,
-		url.QueryEscape(oauthClientID),
-		url.QueryEscape(redirectURI),
-		url.QueryEscape(state),
-	)
+	query := url.Values{}
+	query.Set("response_type", "code")
+	query.Set("client_id", oauthClientID)
+	query.Set("redirect_uri", redirectURI)
+	query.Set("scope", "read")
+	query.Set("state", state)
+	query.Set("code_challenge", codeChallenge)
+	query.Set("code_challenge_method", "S256")
+	authURL := oauthAuthURL + "?" + query.Encode()
 
 	log.Info("OAuth2 授权链接已生成", logger.F("url", authURL))
 	return authURL, nil
@@ -228,14 +237,14 @@ func (m *Manager) shutdownCallbackServer() {
 	}
 }
 
-// exchangeToken 用授权码换取令牌
-func (m *Manager) exchangeToken(code, redirectURI string) error {
+// exchangeToken 用授权码和 PKCE verifier 换取令牌
+func (m *Manager) exchangeToken(code, redirectURI, codeVerifier string) error {
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
 	data.Set("client_id", oauthClientID)
-	data.Set("client_secret", oauthClientSecret)
 	data.Set("redirect_uri", redirectURI)
+	data.Set("code_verifier", codeVerifier)
 
 	resp, err := http.Post(oauthTokenURL, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 	if err != nil {
@@ -283,7 +292,6 @@ func (m *Manager) RefreshToken() error {
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", refreshToken)
 	data.Set("client_id", oauthClientID)
-	data.Set("client_secret", oauthClientSecret)
 
 	resp, err := http.Post(oauthTokenURL, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 	if err != nil {
@@ -438,4 +446,19 @@ func generateState() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// generateCodeVerifier 生成 PKCE code_verifier。
+func generateCodeVerifier() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// buildCodeChallenge 根据 verifier 生成 S256 challenge。
+func buildCodeChallenge(codeVerifier string) string {
+	sum := sha256.Sum256([]byte(codeVerifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
