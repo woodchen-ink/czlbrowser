@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Monitor, Play, Shield, Cpu, ArrowRight, Globe, Settings } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Monitor, Play, Cpu, Globe } from 'lucide-react'
 import { Card } from '../../shared/components'
 import { fetchDashboardStats } from './api'
 import type { DashboardStats } from './types'
@@ -25,13 +24,6 @@ function StatCard({ title, value, icon, color }: StatCardProps) {
     </div>
   )
 }
-
-const QUICK_LINKS = [
-  { to: '/browser', icon: <Monitor className="w-5 h-5" />, label: '浏览器实例', desc: '管理所有指纹浏览器' },
-  { to: '/browser/proxy-pool', icon: <Shield className="w-5 h-5" />, label: '代理池', desc: '配置和测试代理节点' },
-  { to: '/browser/cores', icon: <Cpu className="w-5 h-5" />, label: '内核管理', desc: '管理 Chrome 内核版本' },
-  { to: '/settings', icon: <Settings className="w-5 h-5" />, label: '系统设置', desc: '全局参数配置' },
-]
 
 export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -94,31 +86,8 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* 快捷操作 + 系统信息 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card title="快捷操作">
-          <div className="grid grid-cols-2 gap-3">
-            {QUICK_LINKS.map(link => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="group flex items-center gap-3 p-4 rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-subtle)]
-                         hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-muted)] transition-all duration-150"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[var(--color-accent-muted)] flex items-center justify-center text-[var(--color-text-secondary)]
-                              group-hover:bg-[var(--color-accent)] group-hover:text-[var(--color-text-inverse)] transition-colors shrink-0">
-                  {link.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--color-text-primary)]">{link.label}</p>
-                  <p className="text-xs text-[var(--color-text-muted)] truncate">{link.desc}</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[var(--color-text-muted)] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" />
-              </Link>
-            ))}
-          </div>
-        </Card>
-
+      {/* 系统信息 */}
+      <div>
         <Card title="系统信息">
           <div className="space-y-1">
             {[
