@@ -71,7 +71,6 @@ backend/
     config/                      # YAML config management
     database/                    # SQLite connection (modernc.org/sqlite)
     logger/                      # Structured JSON logging with memory buffer
-    launchcode/                  # Quick launch HTTP API server
     backup/                      # Backup spec and format
     tray/                        # System tray integration
 ```

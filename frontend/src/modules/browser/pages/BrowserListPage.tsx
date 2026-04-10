@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, CheckCircle, ChevronDown, ChevronRight, ChevronUp, Copy, Edit2, FileText, Key, Pencil, Play, Plus, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, LayoutGrid, List } from 'lucide-react'
+import { Activity, CheckCircle, ChevronDown, ChevronRight, ChevronUp, Copy, Edit2, FileText, Key, Play, Plus, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, LayoutGrid, List } from 'lucide-react'
 import { Badge, Button, Card, FormItem, Input, Modal, StatCard, Table, Textarea, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
 import type { BrowserCore, BrowserCoreInput, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount } from '../types'
@@ -18,11 +18,9 @@ import {
   fetchBrowserProxies,
   fetchBrowserSettings,
   fetchGroups,
-  regenerateBrowserProfileCode,
   restartBrowserInstance,
   saveBrowserCore,
   saveBrowserSettings,
-  setBrowserProfileCode,
   setDefaultBrowserCore,
   startBrowserInstance,
   stopBrowserInstance,
@@ -76,65 +74,6 @@ const formatTime = (value?: string) => {
   if (!value) return '-'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN')
-}
-
-function LaunchCodeCell({ profileId, code, onRefresh }: { profileId: string; code: string; onRefresh: () => void }) {
-  const [loading, setLoading] = useState(false)
-
-  const handleCopy = () => {
-    if (!code) return
-    navigator.clipboard.writeText(code).then(() => toast.success('已复制快捷码'))
-  }
-
-  const handleRegenerate = async () => {
-    setLoading(true)
-    try {
-      await regenerateBrowserProfileCode(profileId)
-      onRefresh()
-      toast.success('快捷码已重新生成')
-    } catch {
-      toast.error('重新生成失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleCustomCode = async () => {
-    const next = prompt('请输入自定义 Code（4-32位，仅支持字母/数字/_/-）', code || '')
-    if (next == null) return
-    const value = next.trim()
-    if (!value) {
-      toast.error('Code 不能为空')
-      return
-    }
-    setLoading(true)
-    try {
-      const applied = await setBrowserProfileCode(profileId, value)
-      onRefresh()
-      toast.success(`Code 已更新为 ${applied}`)
-    } catch (error: any) {
-      toast.error(error?.message || '设置自定义 Code 失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!code) return <span className="text-[var(--color-text-muted)] text-xs">-</span>
-
-  return (
-    <div className="flex items-center gap-1">
-      <code className="text-xs font-mono bg-[var(--color-bg-secondary)] px-1.5 py-0.5 rounded text-[var(--color-accent)]">{code}</code>
-      <button onClick={handleCopy} className="p-0.5 hover:text-[var(--color-accent)] text-[var(--color-text-muted)] transition-colors" title="复制">
-        <Copy className="w-3 h-3" />
-      </button>
-      <button onClick={handleRegenerate} disabled={loading} className="p-0.5 hover:text-[var(--color-accent)] text-[var(--color-text-muted)] transition-colors disabled:opacity-50" title="重新生成">
-        <RefreshCw className="w-3 h-3" />
-      </button>
-      <button onClick={handleCustomCode} disabled={loading} className="p-0.5 hover:text-[var(--color-accent)] text-[var(--color-text-muted)] transition-colors disabled:opacity-50" title="自定义">
-        <Pencil className="w-3 h-3" />
-      </button>
-    </div>
-  )
 }
 
 function KeywordInlineRow({ keywords }: { keywords: string[] }) {
@@ -642,11 +581,6 @@ export function BrowserListPage() {
       },
     },
     {
-      key: 'launchCode',
-      title: '快捷打开码',
-      render: (value, record) => <LaunchCodeCell profileId={record.profileId} code={value || ''} onRefresh={loadProfiles} />,
-    },
-    {
       key: 'keywords',
       title: '关键字',
       width: 200,
@@ -790,6 +724,7 @@ export function BrowserListPage() {
                 const isSelected = selectedIds.has(record.profileId)
                 const core = cores.find(c => c.coreId === record.coreId)
                 const proxy = proxies.find(p => p.proxyId === record.proxyId)
+                const group = groups.find(g => g.groupId === record.groupId)
 
                 return (
                   <div
@@ -850,8 +785,8 @@ export function BrowserListPage() {
                         <span className="text-xs text-[var(--color-text-primary)]">{proxy?.proxyName || record.proxyId || '-'}</span>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-xs text-[var(--color-text-muted)] font-medium">快捷配置码</span>
-                        <div className="mt-0.5"><LaunchCodeCell profileId={record.profileId} code={record.launchCode || ''} onRefresh={loadProfiles} /></div>
+                        <span className="text-xs text-[var(--color-text-muted)] font-medium">所属分组</span>
+                        <span className="text-xs text-[var(--color-text-primary)]">{group?.groupName || '未分组'}</span>
                       </div>
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs text-[var(--color-text-muted)] font-medium">上次更新时间</span>

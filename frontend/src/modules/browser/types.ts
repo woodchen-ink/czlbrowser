@@ -18,7 +18,6 @@ export interface BrowserProfile {
   updatedAt: string
   lastStartAt?: string
   lastStopAt?: string
-  launchCode?: string
 }
 
 export interface BrowserProfileInput {

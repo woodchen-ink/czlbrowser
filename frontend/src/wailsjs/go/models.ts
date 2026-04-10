@@ -489,7 +489,6 @@ export namespace browser {
 	    tags: string[];
 	    keywords: string[];
 	    groupId: string;
-	    launchCode: string;
 	    running: boolean;
 	    debugPort: number;
 	    pid: number;
@@ -516,7 +515,6 @@ export namespace browser {
 	        this.tags = source["tags"];
 	        this.keywords = source["keywords"];
 	        this.groupId = source["groupId"];
-	        this.launchCode = source["launchCode"];
 	        this.running = source["running"];
 	        this.debugPort = source["debugPort"];
 	        this.pid = source["pid"];
@@ -670,27 +668,6 @@ export namespace config {
 	        this.lastTestOk = source["lastTestOk"];
 	        this.lastTestedAt = source["lastTestedAt"];
 	        this.lastIPHealthJson = source["lastIPHealthJson"];
-	    }
-	}
-
-}
-
-export namespace launchcode {
-	
-	export class LaunchRequestParams {
-	    launchArgs: string[];
-	    startUrls: string[];
-	    skipDefaultStartUrls: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new LaunchRequestParams(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.launchArgs = source["launchArgs"];
-	        this.startUrls = source["startUrls"];
-	        this.skipDefaultStartUrls = source["skipDefaultStartUrls"];
 	    }
 	}
 

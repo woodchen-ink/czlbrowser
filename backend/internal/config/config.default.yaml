@@ -49,5 +49,3 @@ browser:
   cores: []
   proxies: []
   profiles: []
-launch_server:
-  port: 0

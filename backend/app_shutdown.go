@@ -38,13 +38,6 @@ func (a *App) stopRuntimeServices() {
 			a.speedScheduler = nil
 		}
 
-		if a.launchServer != nil {
-			if err := a.launchServer.Stop(); err != nil {
-				log.Error("LaunchServer 关闭失败", logger.F("error", err))
-			}
-			a.launchServer = nil
-		}
-
 		if err := killResidualRuntimeProcesses(a.appRoot); err != nil {
 			log.Error("退出前清理残留进程失败", logger.F("error", err.Error()))
 		}

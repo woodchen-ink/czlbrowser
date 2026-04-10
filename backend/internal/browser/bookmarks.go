@@ -4,8 +4,10 @@ import (
 	"czl-browser/backend/internal/config"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -50,14 +52,15 @@ func EnsureDefaultBookmarks(userDataDir string, bookmarks []config.BrowserBookma
 
 	// 把不存在的默认书签追加进去
 	for _, b := range bookmarks {
-		if existingURLs[b.URL] {
+		normalizedURL := NormalizeBookmarkURL(b.URL)
+		if normalizedURL != "" && existingURLs[normalizedURL] {
 			continue
 		}
 		maxID++
 		barChildren = append(barChildren, map[string]interface{}{
 			"date_added":     now,
 			"date_last_used": "0",
-			"guid":           bookmarkGUID(b.URL),
+			"guid":           bookmarkGUID(normalizedURL),
 			"id":             fmt.Sprintf("%d", maxID),
 			"meta_info":      map[string]string{"power_bookmark_meta": ""},
 			"name":           b.Name,
@@ -79,6 +82,26 @@ func EnsureDefaultBookmarks(userDataDir string, bookmarks []config.BrowserBookma
 		return fmt.Errorf("序列化书签失败: %w", err)
 	}
 	return os.WriteFile(bookmarksPath, out, 0644)
+}
+
+// NormalizeBookmarkURL 归一化 URL，用于书签判重。
+func NormalizeBookmarkURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return raw
+	}
+
+	u.Scheme = strings.ToLower(u.Scheme)
+	u.Host = strings.ToLower(u.Host)
+	if u.Path == "/" && u.RawPath == "" {
+		u.Path = ""
+	}
+	return u.String()
 }
 
 // newEmptyBookmarkRoot 构建一个空的书签根结构
@@ -165,7 +188,11 @@ func collectURLs(nodes []interface{}, out map[string]bool) {
 		}
 		if node["type"] == "url" {
 			if u, ok := node["url"].(string); ok {
-				out[u] = true
+				normalizedURL := NormalizeBookmarkURL(u)
+				if normalizedURL == "" {
+					continue
+				}
+				out[normalizedURL] = true
 			}
 		} else if node["type"] == "folder" {
 			if sub, ok := node["children"].([]interface{}); ok {

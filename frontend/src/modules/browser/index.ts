@@ -9,7 +9,5 @@ export {
   ProxyPoolPage,
   CoreManagementPage,
   BookmarkSettingsPage,
-  LaunchApiDocsPage,
-  AutomationPage,
   UsageTutorialPage,
 } from './pages'

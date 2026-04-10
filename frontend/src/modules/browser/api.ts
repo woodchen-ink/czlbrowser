@@ -140,19 +140,6 @@ export async function startBrowserInstance(profileId: string): Promise<BrowserPr
   return mockProfiles.find(item => item.profileId === profileId) || null
 }
 
-export async function startBrowserInstanceByCode(code: string): Promise<BrowserProfile | null> {
-  const bindings: any = await getBindings()
-  if (bindings?.BrowserInstanceStartByCode) {
-    return (await bindings.BrowserInstanceStartByCode(code)) || null
-  }
-  const normalized = code.trim().toUpperCase()
-  const profile = mockProfiles.find(item => (item.launchCode || '').toUpperCase() === normalized)
-  if (!profile) {
-    throw new Error('launch code not found')
-  }
-  return await startBrowserInstance(profile.profileId)
-}
-
 export async function stopBrowserInstance(profileId: string): Promise<BrowserProfile | null> {
   const bindings: any = await getBindings()
   if (bindings?.BrowserInstanceStop) {
@@ -646,79 +633,6 @@ export async function setProfileKeywords(profileId: string, keywords: string[]):
     p.profileId === profileId ? { ...p, keywords, updatedAt: new Date().toISOString() } : p
   )
   return mockProfiles.find(p => p.profileId === profileId) || null
-}
-
-// ============================================================================
-// LaunchCode API
-// ============================================================================
-
-export interface LaunchServerInfo {
-  host: string
-  port: number
-  preferredPort: number
-  baseUrl: string
-  ready: boolean
-}
-
-function normalizeLaunchServerInfo(payload: any): LaunchServerInfo {
-  const host = String(payload?.host || '127.0.0.1')
-  const port = Number(payload?.port) || 0
-  const preferredPort = Number(payload?.preferredPort) || 0
-  const fallbackPort = preferredPort > 0 ? preferredPort : 19876
-  const effectivePort = port > 0 ? port : fallbackPort
-  const baseUrl = String(payload?.baseUrl || (effectivePort > 0 ? `http://${host}:${effectivePort}` : ''))
-
-  return {
-    host,
-    port: effectivePort,
-    preferredPort,
-    baseUrl,
-    ready: !!payload?.ready && port > 0,
-  }
-}
-
-export async function fetchLaunchServerInfo(): Promise<LaunchServerInfo> {
-  const bindings: any = await getBindings()
-  if (bindings?.GetLaunchServerInfo) {
-    return normalizeLaunchServerInfo(await bindings.GetLaunchServerInfo())
-  }
-
-  const goApp = (window as any).go?.main?.App
-  if (goApp?.GetLaunchServerInfo) {
-    return normalizeLaunchServerInfo(await goApp.GetLaunchServerInfo())
-  }
-
-  return {
-    host: '127.0.0.1',
-    port: 19876,
-    preferredPort: 19876,
-    baseUrl: 'http://127.0.0.1:19876',
-    ready: false,
-  }
-}
-
-export async function getBrowserProfileCode(profileId: string): Promise<string> {
-  const bindings: any = await getBindings()
-  if (bindings?.BrowserProfileGetCode) {
-    return (await bindings.BrowserProfileGetCode(profileId)) || ''
-  }
-  return ''
-}
-
-export async function regenerateBrowserProfileCode(profileId: string): Promise<string> {
-  const bindings: any = await getBindings()
-  if (bindings?.BrowserProfileRegenerateCode) {
-    return (await bindings.BrowserProfileRegenerateCode(profileId)) || ''
-  }
-  return ''
-}
-
-export async function setBrowserProfileCode(profileId: string, code: string): Promise<string> {
-  const bindings: any = await getBindings()
-  if (bindings?.BrowserProfileSetCode) {
-    return (await bindings.BrowserProfileSetCode(profileId, code)) || ''
-  }
-  return code.trim().toUpperCase()
 }
 
 

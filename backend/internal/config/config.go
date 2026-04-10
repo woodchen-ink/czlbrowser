@@ -9,21 +9,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// LaunchServerConfig Launch HTTP 服务配置
-type LaunchServerConfig struct {
-	// Port <= 0 时自动分配随机可用端口（推荐）。
-	Port int `yaml:"port"`
-}
-
 // OAuth2Config OAuth2 认证配置
 // Config 应用配置
 type Config struct {
-	Database     DatabaseConfig     `yaml:"database"`
-	App          AppConfig          `yaml:"app"`
-	Runtime      RuntimeConfig      `yaml:"runtime"`
-	Logging      LoggingConfig      `yaml:"logging"`
-	Browser      BrowserConfig      `yaml:"browser"`
-	LaunchServer LaunchServerConfig `yaml:"launch_server"`
+	Database DatabaseConfig `yaml:"database"`
+	App      AppConfig      `yaml:"app"`
+	Runtime  RuntimeConfig  `yaml:"runtime"`
+	Logging  LoggingConfig  `yaml:"logging"`
+	Browser  BrowserConfig  `yaml:"browser"`
 }
 
 // DatabaseConfig 数据库配置
@@ -335,9 +328,6 @@ func normalizeConfig(config *Config) {
 		config.Browser.Profiles = []BrowserProfileConfig{}
 	}
 
-	if config.LaunchServer.Port < 0 {
-		config.LaunchServer.Port = defaultConfig.LaunchServer.Port
-	}
 }
 
 func cloneInterceptorConfig(src InterceptorConfig) InterceptorConfig {
@@ -401,9 +391,6 @@ func DefaultConfig() *Config {
 				LogResults:      true,
 				SensitiveFields: []string{"password", "token", "secret"},
 			},
-		},
-		LaunchServer: LaunchServerConfig{
-			Port: 0,
 		},
 	}
 }

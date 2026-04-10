@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"czl-browser/backend/internal/browser"
 	"czl-browser/backend/internal/config"
 	"czl-browser/backend/internal/logger"
 )
@@ -33,8 +34,17 @@ func (a *App) BookmarkList() []BrowserBookmark {
 func (a *App) BookmarkSave(items []BrowserBookmark) error {
 	log := logger.New("Bookmark")
 	valid := make([]BrowserBookmark, 0, len(items))
+	seen := make(map[string]struct{}, len(items))
 	for _, item := range items {
 		if item.Name != "" && item.URL != "" {
+			normalizedURL := browser.NormalizeBookmarkURL(item.URL)
+			if normalizedURL == "" {
+				continue
+			}
+			if _, exists := seen[normalizedURL]; exists {
+				continue
+			}
+			seen[normalizedURL] = struct{}{}
 			valid = append(valid, item)
 		}
 	}

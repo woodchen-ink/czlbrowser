@@ -122,14 +122,6 @@ export function BrowserInstanceStart(arg1) {
   return window['go']['main']['App']['BrowserInstanceStart'](arg1);
 }
 
-export function BrowserInstanceStartByCode(arg1) {
-  return window['go']['main']['App']['BrowserInstanceStartByCode'](arg1);
-}
-
-export function BrowserInstanceStartWithParams(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['BrowserInstanceStartWithParams'](arg1, arg2, arg3, arg4);
-}
-
 export function BrowserInstanceStatus(arg1) {
   return window['go']['main']['App']['BrowserInstanceStatus'](arg1);
 }
@@ -158,24 +150,12 @@ export function BrowserProfileDelete(arg1) {
   return window['go']['main']['App']['BrowserProfileDelete'](arg1);
 }
 
-export function BrowserProfileGetCode(arg1) {
-  return window['go']['main']['App']['BrowserProfileGetCode'](arg1);
-}
-
 export function BrowserProfileList() {
   return window['go']['main']['App']['BrowserProfileList']();
 }
 
 export function BrowserProfileListByTag(arg1) {
   return window['go']['main']['App']['BrowserProfileListByTag'](arg1);
-}
-
-export function BrowserProfileRegenerateCode(arg1) {
-  return window['go']['main']['App']['BrowserProfileRegenerateCode'](arg1);
-}
-
-export function BrowserProfileSetCode(arg1, arg2) {
-  return window['go']['main']['App']['BrowserProfileSetCode'](arg1, arg2);
 }
 
 export function BrowserProfileSetKeywords(arg1, arg2) {
@@ -278,10 +258,6 @@ export function GetInterceptor() {
   return window['go']['main']['App']['GetInterceptor']();
 }
 
-export function GetLaunchServerInfo() {
-  return window['go']['main']['App']['GetLaunchServerInfo']();
-}
-
 export function GetLicenseStatus() {
   return window['go']['main']['App']['GetLicenseStatus']();
 }
@@ -340,14 +316,6 @@ export function SetDevMode(arg1) {
 
 export function SetLogLevel(arg1) {
   return window['go']['main']['App']['SetLogLevel'](arg1);
-}
-
-export function StartInstance(arg1) {
-  return window['go']['main']['App']['StartInstance'](arg1);
-}
-
-export function StartInstanceWithParams(arg1, arg2) {
-  return window['go']['main']['App']['StartInstanceWithParams'](arg1, arg2);
 }
 
 export function TestProxyConnectivity(arg1, arg2) {

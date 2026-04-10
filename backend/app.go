@@ -5,7 +5,6 @@ import (
 	"czl-browser/backend/internal/browser"
 	"czl-browser/backend/internal/config"
 	"czl-browser/backend/internal/database"
-	"czl-browser/backend/internal/launchcode"
 	"czl-browser/backend/internal/logger"
 	"czl-browser/backend/internal/proxy"
 	"context"
@@ -34,8 +33,6 @@ type App struct {
 	xrayMgr        *proxy.XrayManager
 	clashMgr       *proxy.ClashManager
 	singboxMgr     *proxy.SingBoxManager
-	launchCodeSvc  *launchcode.LaunchCodeService
-	launchServer   *launchcode.LaunchServer
 	speedScheduler *browser.ProxySpeedScheduler
 	authMgr        *auth.Manager
 	appRoot        string
@@ -156,26 +153,6 @@ func (a *App) startup(ctx context.Context) {
 	a.browserMgr.InitData()
 	a.autoDetectCores()
 	a.loadProxies()
-
-	// 初始化 LaunchCode 服务
-	launchCodeDAO := launchcode.NewSQLiteLaunchCodeDAO(a.db.GetConn())
-	a.launchCodeSvc = launchcode.NewLaunchCodeService(launchCodeDAO)
-	if err := a.launchCodeSvc.LoadAll(); err != nil {
-		log.Error("LaunchCode 加载失败", logger.F("error", err))
-	}
-	a.browserMgr.CodeProvider = a.launchCodeSvc
-
-	// 启动 LaunchServer
-	port := a.config.LaunchServer.Port
-	a.launchServer = launchcode.NewLaunchServer(a.launchCodeSvc, a, a.browserMgr, port)
-	if err := a.launchServer.Start(); err != nil {
-		log.Error("LaunchServer 启动失败", logger.F("error", err))
-	} else {
-		log.Info("LaunchServer 监听地址",
-			logger.F("url", fmt.Sprintf("http://127.0.0.1:%d", a.launchServer.Port())),
-			logger.F("preferred_port", port),
-		)
-	}
 
 	// 连接池失效通知
 	a.xrayMgr.OnBridgeDied = func(key string, err error) {

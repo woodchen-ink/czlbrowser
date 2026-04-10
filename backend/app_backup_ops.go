@@ -455,13 +455,6 @@ func (a *App) backupReloadAfterMutation() error {
 	a.autoDetectCores()
 	a.loadProxies()
 
-	if a.launchCodeSvc != nil {
-		_ = a.launchCodeSvc.LoadAll()
-	}
-	if a.browserMgr != nil {
-		a.browserMgr.CodeProvider = a.launchCodeSvc
-	}
-
 	if a.browserMgr != nil && a.browserMgr.ProxyDAO != nil {
 		a.speedScheduler = browser.NewProxySpeedScheduler(
 			a.browserMgr.ProxyDAO,
@@ -508,7 +501,7 @@ func (a *App) backupClearBusinessTables() error {
 	}
 	defer tx.Rollback()
 
-	tables := []string{"launch_codes", "browser_profiles", "browser_proxies", "browser_cores", "browser_bookmarks", "browser_groups"}
+	tables := []string{"browser_profiles", "browser_proxies", "browser_cores", "browser_bookmarks", "browser_groups"}
 	for _, table := range tables {
 		if _, err := tx.Exec("DELETE FROM " + table); err != nil && !backupIsNoSuchTableError(err) {
 			return fmt.Errorf("清空数据表失败(%s): %w", table, err)
@@ -1001,18 +994,6 @@ SELECT s.name, s.url, s.sort_order
 FROM src.browser_bookmarks s
 WHERE NOT EXISTS (
   SELECT 1 FROM browser_bookmarks t WHERE lower(t.url) = lower(s.url)
-)`,
-		},
-		{
-			name: "launch_codes",
-			insertAll: `INSERT INTO launch_codes (profile_id, code, created_at, updated_at)
-SELECT profile_id, code, created_at, updated_at FROM src.launch_codes`,
-			insertSafe: `INSERT INTO launch_codes (profile_id, code, created_at, updated_at)
-SELECT s.profile_id, s.code, s.created_at, s.updated_at
-FROM src.launch_codes s
-WHERE NOT EXISTS (
-  SELECT 1 FROM launch_codes t
-  WHERE t.profile_id = s.profile_id OR t.code = s.code
 )`,
 		},
 	}

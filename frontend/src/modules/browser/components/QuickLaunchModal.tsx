@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Keyboard, Play, Search, Tag } from 'lucide-react'
 import { Badge, Button, Modal, toast } from '../../../shared/components'
-import { fetchBrowserProfiles, fetchGroups, startBrowserInstanceByCode } from '../api'
+import { fetchBrowserProfiles, fetchGroups, startBrowserInstance } from '../api'
 import type { BrowserGroupWithCount, BrowserProfile } from '../types'
 import { resolveActionErrorMessage } from '../utils/actionErrors'
 
@@ -29,14 +29,9 @@ function normalizeText(v?: string): string {
   return (v || '').trim().toLowerCase()
 }
 
-function normalizeCode(v?: string): string {
-  return normalizeText(v).toUpperCase()
-}
-
 function buildSearchText(profile: BrowserProfile): string {
   return [
     profile.profileName,
-    profile.launchCode || '',
     ...(profile.tags || []),
     ...(profile.keywords || []),
   ]
@@ -63,7 +58,7 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
   const [query, setQuery] = useState('')
   const [groupFilter, setGroupFilter] = useState(GROUP_ALL)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [startingCode, setStartingCode] = useState('')
+  const [startingProfileId, setStartingProfileId] = useState('')
   const [activeTag, setActiveTag] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const sectionScrollRef = useRef<HTMLDivElement>(null)
@@ -106,7 +101,7 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
 
     return () => {
       alive = false
-      setStartingCode('')
+      setStartingProfileId('')
       setActiveTag('')
     }
   }, [open])
@@ -275,30 +270,21 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
     }
   }, [])
 
-  const startByCode = async (code: string): Promise<boolean> => {
-    const normalized = normalizeCode(code)
-    if (!normalized || startingCode) return false
+  const startProfile = async (profile: BrowserProfile): Promise<boolean> => {
+    if (!profile?.profileId || startingProfileId) return false
 
-    setStartingCode(normalized)
+    setStartingProfileId(profile.profileId)
     try {
-      const profile = await startBrowserInstanceByCode(normalized)
-      toast.success(profile?.running ? `实例「${profile.profileName}」已在运行` : `实例「${profile?.profileName || normalized}」已启动`)
+      await startBrowserInstance(profile.profileId)
+      toast.success(`实例「${profile.profileName}」已启动`)
       onClose()
       return true
     } catch (error: any) {
-      toast.error(resolveActionErrorMessage(error, '按 Code 启动失败'))
+      toast.error(resolveActionErrorMessage(error, '启动实例失败'))
       return false
     } finally {
-      setStartingCode('')
+      setStartingProfileId('')
     }
-  }
-
-  const startProfile = async (profile: BrowserProfile) => {
-    if (!profile.launchCode) {
-      toast.error('该实例尚未分配 Code，请先在实例列表设置')
-      return
-    }
-    await startByCode(profile.launchCode)
   }
 
   const onPanelKeyDown = async (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -310,10 +296,6 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
 
     if (event.key === 'Enter') {
       event.preventDefault()
-      if (query.trim()) {
-        const ok = await startByCode(query)
-        if (ok) return
-      }
       const target = filteredProfiles[selectedIndex]
       if (target) {
         void startProfile(target)
@@ -369,17 +351,22 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="输入 Code 或实例名 / 标签 / 关键字"
+              placeholder="输入实例名 / 标签 / 关键字"
               className="h-9 w-full border-0 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none px-0"
             />
             <Button
               size="sm"
               className="shrink-0 whitespace-nowrap px-2.5"
-              loading={!!startingCode}
-              onClick={() => void startByCode(query)}
-              disabled={!query.trim()}
+              loading={!!startingProfileId}
+              onClick={() => {
+                const target = filteredProfiles[selectedIndex]
+                if (target) {
+                  void startProfile(target)
+                }
+              }}
+              disabled={!filteredProfiles.length}
             >
-              按Code启动
+              启动选中
             </Button>
           </div>
 
@@ -477,7 +464,6 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
                         {section.items.map((profile) => {
                           const index = profileIndexMap.get(profile.profileId) ?? -1
                           const selected = index === selectedIndex
-                          const profileCode = normalizeCode(profile.launchCode)
 
                           return (
                             <button
@@ -502,13 +488,9 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
                                   </div>
 
                                   <div className="mt-1.5">
-                                    {profile.launchCode ? (
-                                      <code className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--color-bg-secondary)] text-[var(--color-accent)] border border-[var(--color-border-muted)]">
-                                        {profile.launchCode}
-                                      </code>
-                                    ) : (
-                                      <Badge size="sm" variant="warning">无 Code</Badge>
-                                    )}
+                                    <span className="text-[11px] text-[var(--color-text-muted)]">
+                                      {profile.groupId ? `分组：${groupNameMap.get(profile.groupId) || profile.groupId}` : '未分组'}
+                                    </span>
                                   </div>
 
                                   {(profile.tags?.length || 0) > 0 && (
@@ -522,12 +504,11 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
 
                                 <Button
                                   size="sm"
-                                  loading={!!startingCode && profileCode === startingCode}
+                                  loading={!!startingProfileId && profile.profileId === startingProfileId}
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     void startProfile(profile)
                                   }}
-                                  disabled={!profile.launchCode}
                                 >
                                   <Play className="w-3.5 h-3.5 fill-current" /> 启动
                                 </Button>
@@ -547,7 +528,7 @@ export function QuickLaunchModal({ open, onClose }: QuickLaunchModalProps) {
         <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
           <div className="inline-flex items-center gap-1.5">
             <Keyboard className="w-3.5 h-3.5" />
-            <span>回车优先按输入 Code 启动；↑/↓ 按顺序切换卡片；Esc 关闭</span>
+            <span>回车启动当前选中实例；↑/↓ 按顺序切换卡片；Esc 关闭</span>
           </div>
           <span>全局快捷键: Ctrl/Cmd + K</span>
         </div>

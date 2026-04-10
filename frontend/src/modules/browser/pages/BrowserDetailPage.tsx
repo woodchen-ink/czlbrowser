@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Copy, Globe, Play, RefreshCw, RotateCcw, Square } from 'lucide-react'
+import { Globe, Play, RotateCcw, Square } from 'lucide-react'
 import { Badge, Button, Card, Input, Table, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
 import type { BrowserProfile, BrowserTab } from '../types'
@@ -8,7 +8,6 @@ import {
   fetchBrowserProfiles,
   fetchBrowserTabs,
   openBrowserUrl,
-  regenerateBrowserProfileCode,
   restartBrowserInstance,
   startBrowserInstance,
   stopBrowserInstance,
@@ -203,36 +202,6 @@ export function BrowserDetailPage() {
                 <div className="flex justify-between">
                   <span>标签</span>
                   <span>{profile.tags?.join(', ') || '-'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>快捷码</span>
-                  <div className="flex items-center gap-1">
-                    {profile.launchCode ? (
-                      <>
-                        <code className="text-xs font-mono bg-[var(--color-bg-secondary)] px-1.5 py-0.5 rounded text-[var(--color-accent)]">{profile.launchCode}</code>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(profile.launchCode!).then(() => toast.success('已复制快捷码'))}
-                          className="p-0.5 hover:text-[var(--color-accent)] text-[var(--color-text-muted)] transition-colors"
-                          title="复制"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await regenerateBrowserProfileCode(profile.profileId)
-                            loadProfile()
-                            toast.success('快捷码已重新生成')
-                          }}
-                          className="p-0.5 hover:text-[var(--color-accent)] text-[var(--color-text-muted)] transition-colors"
-                          title="重新生成"
-                        >
-                          <RefreshCw className="w-3 h-3" />
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[var(--color-text-muted)]">-</span>
-                    )}
-                  </div>
                 </div>
               </div>
             </Card>

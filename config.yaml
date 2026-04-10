@@ -45,5 +45,3 @@ browser:
         - --disable-sync
         - --no-first-run
     default_proxy: ""
-launch_server:
-    port: 0

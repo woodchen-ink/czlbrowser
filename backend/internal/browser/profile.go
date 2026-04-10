@@ -145,13 +145,7 @@ func (m *Manager) List() []Profile {
 	defer m.Mutex.Unlock()
 	list := make([]Profile, 0, len(m.Profiles))
 	for _, profile := range m.Profiles {
-		p := *profile
-		if m.CodeProvider != nil {
-			if code, err := m.CodeProvider.EnsureCode(p.ProfileId); err == nil {
-				p.LaunchCode = code
-			}
-		}
-		list = append(list, p)
+		list = append(list, *profile)
 	}
 	// 按 ProfileId 排序，保持稳定顺序
 	sort.Slice(list, func(i, j int) bool {
@@ -257,11 +251,6 @@ func (m *Manager) Create(input ProfileInput) (*Profile, error) {
 	if err := m.SaveProfiles(); err != nil {
 		return nil, err
 	}
-	if m.CodeProvider != nil {
-		if code, err := m.CodeProvider.EnsureCode(profile.ProfileId); err == nil {
-			profile.LaunchCode = code
-		}
-	}
 	return profile, nil
 }
 
@@ -328,9 +317,6 @@ func (m *Manager) Delete(profileId string) error {
 		}
 	}
 
-	if m.CodeProvider != nil {
-		_ = m.CodeProvider.Remove(profileId)
-	}
 	return nil
 }
 
@@ -417,12 +403,6 @@ func (m *Manager) Copy(profileId string, newName string) (*Profile, error) {
 
 	if err := m.SaveProfiles(); err != nil {
 		return nil, err
-	}
-
-	if m.CodeProvider != nil {
-		if code, err := m.CodeProvider.EnsureCode(profile.ProfileId); err == nil {
-			profile.LaunchCode = code
-		}
 	}
 
 	return profile, nil

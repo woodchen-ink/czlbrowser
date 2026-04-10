@@ -125,6 +125,14 @@ var migrations = []migration{
 			`ALTER TABLE browser_proxies ADD COLUMN source_last_refresh_at TEXT NOT NULL DEFAULT ''`,
 		},
 	},
+	{
+		version: 6,
+		desc:    "移除 LaunchCode 自动化能力",
+		stmts: []string{
+			`DROP INDEX IF EXISTS idx_launch_codes_code`,
+			`DROP TABLE IF EXISTS launch_codes`,
+		},
+	},
 	// ── 新版本在此追加，格式：
 	// {
 	//     version: 4,

@@ -21,7 +21,6 @@ type Profile struct {
 	Tags            []string `json:"tags"`
 	Keywords        []string `json:"keywords"`
 	GroupId         string   `json:"groupId"` // 所属分组ID
-	LaunchCode      string   `json:"launchCode"`
 	Running         bool     `json:"running"`
 	DebugPort       int      `json:"debugPort"`
 	Pid             int      `json:"pid"`
@@ -112,12 +111,6 @@ type Core = config.BrowserCore
 type Environment = config.BrowserEnvironment
 type ProfileConfig = config.BrowserProfileConfig
 
-// CodeProvider 提供 LaunchCode 的接口（由 launchcode.LaunchCodeService 实现）
-type CodeProvider interface {
-	EnsureCode(profileId string) (string, error)
-	Remove(profileId string) error
-}
-
 // Manager 浏览器管理器
 type Manager struct {
 	Config           *config.Config
@@ -126,7 +119,6 @@ type Manager struct {
 	Mutex            sync.Mutex
 	BrowserProcesses map[string]*exec.Cmd
 	XrayBridges      map[string]*XrayBridge
-	CodeProvider     CodeProvider
 
 	// DAO 层（注入后使用 SQLite 存储，未注入时降级到 config.yaml）
 	ProfileDAO  ProfileDAO

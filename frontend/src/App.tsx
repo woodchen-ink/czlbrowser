@@ -19,9 +19,7 @@ import {
   ProxyPoolPage,
   CoreManagementPage,
   BookmarkSettingsPage,
-  LaunchApiDocsPage,
   TagManagementPage,
-  AutomationPage,
   UsageTutorialPage,
 } from './modules/browser'
 import { QuickLaunchModal } from './modules/browser/components/QuickLaunchModal'
@@ -226,8 +224,6 @@ function AuthenticatedApp() {
         <Route path="/browser/proxy-pool" element={<ProxyPoolPage />} />
         <Route path="/browser/cores" element={<CoreManagementPage />} />
         <Route path="/browser/bookmarks" element={<BookmarkSettingsPage />} />
-        <Route path="/browser/automation" element={<AutomationPage />} />
-        <Route path="/browser/launch-api" element={<LaunchApiDocsPage />} />
         <Route path="/browser/tags" element={<TagManagementPage />} />
         <Route path="/system/tutorial" element={<UsageTutorialPage />} />
       </Routes>

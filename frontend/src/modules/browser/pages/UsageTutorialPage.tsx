@@ -1,11 +1,7 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, Download, Globe, Keyboard, Layers, Monitor, Rocket } from 'lucide-react'
+import { BookOpen, Download, Globe, Keyboard, Layers, Monitor } from 'lucide-react'
 import { Button, Card } from '../../../shared/components'
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 import type { ReactNode } from 'react'
-import { fetchLaunchServerInfo } from '../api'
-
-const DEFAULT_LAUNCH_BASE_URL = 'http://127.0.0.1:19876'
 
 function StepCard({
   icon,
@@ -46,35 +42,6 @@ function LinkButton({ url, children }: { url: string; children: ReactNode }) {
 }
 
 export function UsageTutorialPage() {
-  const [launchBaseUrl, setLaunchBaseUrl] = useState(DEFAULT_LAUNCH_BASE_URL)
-  const [launchServerReady, setLaunchServerReady] = useState(false)
-
-  useEffect(() => {
-    let disposed = false
-
-    void fetchLaunchServerInfo()
-      .then((info) => {
-        if (disposed) return
-        if (info.baseUrl) {
-          setLaunchBaseUrl(info.baseUrl)
-        }
-        setLaunchServerReady(info.ready)
-      })
-      .catch(() => {})
-
-    return () => {
-      disposed = true
-    }
-  }, [])
-
-  const launchCodeCurlSample = `# 按 Code 启动
-curl ${launchBaseUrl}/api/launch/A3F9K2
-
-# 带参数启动
-curl -X POST ${launchBaseUrl}/api/launch \\
-  -H "Content-Type: application/json" \\
-  -d '{"code":"A3F9K2","launchArgs":["--window-size=1280,800"]}'`
-
   return (
     <div className="space-y-5 animate-fade-in">
       <Card>
@@ -130,24 +97,13 @@ curl -X POST ${launchBaseUrl}/api/launch \\
 
       <StepCard icon={<Keyboard className="w-4 h-4" />} title="5) 使用快捷键快速启动">
         <p>在应用内按 <code>Ctrl + K</code>（Mac 为 <code>Cmd + K</code>）即可呼出“快速启动浏览器”弹窗。</p>
-        <p>你可以直接输入实例 Code 回车启动，也可以在下方列表中选择实例后启动。</p>
+        <p>你可以通过实例名、标签和关键字快速检索目标实例，并直接启动。</p>
         <p>弹窗内支持键盘操作：</p>
         <pre className="text-xs font-mono bg-[var(--color-bg-secondary)] border border-[var(--color-border-muted)] rounded-lg p-3 overflow-x-auto">
 {`Ctrl/Cmd + K  呼出/收起快速启动弹窗
-Enter          优先按输入的 Code 启动
+Enter          启动当前选中实例
 ↑ / ↓          在实例列表中切换选中项
 Esc            关闭弹窗`}
-        </pre>
-      </StepCard>
-
-      <StepCard icon={<Rocket className="w-4 h-4" />} title="6) 自动化启动（可选）">
-        <p>每个实例可配置专属 Code。你可以通过快捷键弹窗输入 Code 启动，或通过接口调用启动。</p>
-        <p>
-          当前 Launch 地址：<code>{launchBaseUrl}</code>
-          {!launchServerReady ? '（服务启动后会自动刷新）' : ''}
-        </p>
-        <pre className="text-xs font-mono bg-[var(--color-bg-secondary)] border border-[var(--color-border-muted)] rounded-lg p-3 overflow-x-auto">
-{launchCodeCurlSample}
         </pre>
       </StepCard>
     </div>

@@ -6,7 +6,6 @@ import {config} from '../models';
 import {backend} from '../models';
 import {browser} from '../models';
 import {logger} from '../models';
-import {launchcode} from '../models';
 
 export function AuthGetState():Promise<auth.AuthState>;
 
@@ -68,10 +67,6 @@ export function BrowserInstanceRestart(arg1:string):Promise<browser.Profile>;
 
 export function BrowserInstanceStart(arg1:string):Promise<browser.Profile>;
 
-export function BrowserInstanceStartByCode(arg1:string):Promise<browser.Profile>;
-
-export function BrowserInstanceStartWithParams(arg1:string,arg2:Array<string>,arg3:Array<string>,arg4:boolean):Promise<browser.Profile>;
-
 export function BrowserInstanceStatus(arg1:string):Promise<browser.Profile>;
 
 export function BrowserInstanceStop(arg1:string):Promise<browser.Profile>;
@@ -86,15 +81,9 @@ export function BrowserProfileCreate(arg1:browser.ProfileInput):Promise<browser.
 
 export function BrowserProfileDelete(arg1:string):Promise<void>;
 
-export function BrowserProfileGetCode(arg1:string):Promise<string>;
-
 export function BrowserProfileList():Promise<Array<browser.Profile>>;
 
 export function BrowserProfileListByTag(arg1:string):Promise<Array<browser.Profile>>;
-
-export function BrowserProfileRegenerateCode(arg1:string):Promise<string>;
-
-export function BrowserProfileSetCode(arg1:string,arg2:string):Promise<string>;
 
 export function BrowserProfileSetKeywords(arg1:string,arg2:Array<string>):Promise<browser.Profile>;
 
@@ -146,8 +135,6 @@ export function GetDashboardStats():Promise<Record<string, any>>;
 
 export function GetInterceptor():Promise<logger.MethodInterceptor>;
 
-export function GetLaunchServerInfo():Promise<Record<string, any>>;
-
 export function GetLicenseStatus():Promise<backend.LicenseStatus>;
 
 export function GetLogLevel():Promise<string>;
@@ -177,10 +164,6 @@ export function SaveBrowserSettings(arg1:browser.Settings):Promise<void>;
 export function SetDevMode(arg1:boolean):Promise<void>;
 
 export function SetLogLevel(arg1:string):Promise<void>;
-
-export function StartInstance(arg1:string):Promise<browser.Profile>;
-
-export function StartInstanceWithParams(arg1:string,arg2:launchcode.LaunchRequestParams):Promise<browser.Profile>;
 
 export function TestProxyConnectivity(arg1:string,arg2:string):Promise<backend.ProxyTestResult>;
 

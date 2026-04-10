@@ -60,9 +60,6 @@ browser: {}
 	if cfg.Browser.Cores == nil || cfg.Browser.Proxies == nil || cfg.Browser.Profiles == nil {
 		t.Fatalf("Browser 列表字段应初始化为空切片")
 	}
-	if cfg.LaunchServer.Port != 0 {
-		t.Fatalf("LaunchServer.Port 未补齐: got=%d", cfg.LaunchServer.Port)
-	}
 }
 
 func TestLoadPreservesExplicitConfig(t *testing.T) {
@@ -117,8 +114,6 @@ browser:
   cores: []
   proxies: []
   profiles: []
-launch_server:
-  port: 30000
 `
 	if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
 		t.Fatalf("写入测试配置失败: %v", err)
@@ -149,9 +144,6 @@ launch_server:
 	}
 	if cfg.Browser.UserDataRoot != "custom_data" || cfg.Browser.DefaultProxy != "direct://" {
 		t.Fatalf("Browser 显式配置被覆盖: got=%+v", cfg.Browser)
-	}
-	if cfg.LaunchServer.Port != 30000 {
-		t.Fatalf("LaunchServer.Port 显式配置被覆盖: got=%d", cfg.LaunchServer.Port)
 	}
 }
 
