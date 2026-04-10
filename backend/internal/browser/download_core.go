@@ -15,7 +15,6 @@ import (
 
 	"czl-browser/backend/internal/logger"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/sys/windows/registry"
 )
@@ -176,13 +175,7 @@ func (m *Manager) DownloadAndExtractCore(ctx context.Context, coreName string, t
 	// 4. 将新内核配置入库
 	corePath := filepath.Join("chrome", coreName)
 	if m.ValidateCorePath(corePath).Valid {
-		newCore := CoreInput{
-			CoreId:    uuid.NewString(), // 使用固定的 UUID 或生成新的
-			CoreName:  coreName,
-			CorePath:  corePath,
-			IsDefault: len(m.ListCores()) == 0, // 如果没有其他内核，这设为默认
-		}
-		if err := m.SaveCore(newCore); err != nil {
+		if err := m.RegisterDownloadedCore(coreName, corePath); err != nil {
 			sendEvent("error", 0, "保存配置入库失败: "+err.Error())
 			return
 		}

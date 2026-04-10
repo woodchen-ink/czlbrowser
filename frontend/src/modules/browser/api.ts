@@ -1,4 +1,4 @@
-import type { BrowserProfile, BrowserProfileInput, BrowserTab, BrowserSettings, BrowserCore, BrowserCoreInput, BrowserCoreValidateResult, BrowserProxy, BrowserCoreExtended, CookieInfo, SnapshotInfo, BrowserBookmark, BrowserGroup, BrowserGroupInput, BrowserGroupWithCount, ProxyIPHealthResult } from './types'
+import type { BrowserProfile, BrowserProfileInput, BrowserTab, BrowserSettings, BrowserCore, BrowserCoreValidateResult, BrowserProxy, BrowserCoreExtended, CookieInfo, SnapshotInfo, BrowserBookmark, BrowserGroup, BrowserGroupInput, BrowserGroupWithCount, ProxyIPHealthResult } from './types'
 
 const getBindings = async () => {
   try {
@@ -212,21 +212,6 @@ export async function fetchBrowserCores(): Promise<BrowserCore[]> {
   return mockCores
 }
 
-export async function saveBrowserCore(input: BrowserCoreInput): Promise<boolean> {
-  const bindings: any = await getBindings()
-  if (bindings?.BrowserCoreSave) {
-    await bindings.BrowserCoreSave(input)
-    return true
-  }
-  const index = mockCores.findIndex(c => c.coreId === input.coreId)
-  if (index >= 0) {
-    mockCores[index] = input
-  } else {
-    mockCores.push({ ...input, coreId: input.coreId || `core-${Date.now()}` })
-  }
-  return true
-}
-
 export async function deleteBrowserCore(coreId: string): Promise<boolean> {
   const bindings: any = await getBindings()
   if (bindings?.BrowserCoreDelete) {
@@ -261,14 +246,6 @@ export async function fetchCoreExtendedInfo(): Promise<BrowserCoreExtended[]> {
     return (await bindings.BrowserCoreExtendedInfo()) || []
   }
   return []
-}
-
-export async function scanBrowserCores(): Promise<BrowserCore[]> {
-  const bindings: any = await getBindings()
-  if (bindings?.BrowserCoreScan) {
-    return (await bindings.BrowserCoreScan()) || []
-  }
-  return mockCores
 }
 
 export async function BrowserCoreDownload(coreName: string, url: string, proxyConfig?: string): Promise<boolean> {

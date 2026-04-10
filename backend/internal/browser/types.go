@@ -61,14 +61,6 @@ type Settings struct {
 	DefaultProxy           string   `json:"defaultProxy"`
 }
 
-// CoreInput 内核配置输入
-type CoreInput struct {
-	CoreId    string `json:"coreId"`
-	CoreName  string `json:"coreName"`
-	CorePath  string `json:"corePath"`
-	IsDefault bool   `json:"isDefault"`
-}
-
 // CoreValidateResult 内核路径验证结果
 type CoreValidateResult struct {
 	Valid   bool   `json:"valid"`

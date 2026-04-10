@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { FolderOpen, Settings, Edit2, Download, CheckCircle } from 'lucide-react'
 import { Badge, Button, Card, ConfirmModal, FormItem, Input, Modal, Table, Textarea, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
-import type { BrowserCore, BrowserCoreInput, BrowserCoreValidateResult, BrowserSettings, BrowserCoreExtended, BrowserProxy } from '../types'
-import { fetchBrowserCores, saveBrowserCore, deleteBrowserCore, setDefaultBrowserCore, validateBrowserCorePath, openCorePath, fetchBrowserSettings, saveBrowserSettings, fetchCoreExtendedInfo, scanBrowserCores, fetchBrowserProxies, fetchBuiltinCores, downloadBuiltinCore, type BuiltinCoreSource } from '../api'
+import type { BrowserSettings, BrowserCoreExtended, BrowserProxy } from '../types'
+import { fetchBrowserCores, deleteBrowserCore, setDefaultBrowserCore, validateBrowserCorePath, openCorePath, fetchBrowserSettings, saveBrowserSettings, fetchCoreExtendedInfo, fetchBrowserProxies, fetchBuiltinCores, downloadBuiltinCore, type BuiltinCoreSource } from '../api'
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 
 interface CoreDisplayInfo {
@@ -18,10 +18,8 @@ interface CoreDisplayInfo {
 }
 
 export function CoreManagementPage() {
-  const [cores, setCores] = useState<BrowserCore[]>([])
   const [displayList, setDisplayList] = useState<CoreDisplayInfo[]>([])
   const [loading, setLoading] = useState(true)
-  const [scanning, setScanning] = useState(false)
 
   // 全局设置状态
   const [settings, setSettings] = useState<BrowserSettings>({
@@ -38,14 +36,6 @@ export function CoreManagementPage() {
     defaultLaunchArgs: '',
   })
   const [savingSettings, setSavingSettings] = useState(false)
-
-  // 编辑弹窗状态
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [editingCore, setEditingCore] = useState<BrowserCore | null>(null)
-  const [editForm, setEditForm] = useState({ coreName: '', corePath: '' })
-  const [saving, setSaving] = useState(false)
-  const [pathValidating, setPathValidating] = useState(false)
-  const [pathValidResult, setPathValidResult] = useState<BrowserCoreValidateResult | null>(null)
 
   // 删除确认状态
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -99,7 +89,6 @@ export function CoreManagementPage() {
       setBuiltinCores(builtinList)
 
       setSettings(settingsData)
-      setCores(coreList)
 
       // 创建扩展信息映射
       const extendedMap = new Map<string, BrowserCoreExtended>()
@@ -128,31 +117,9 @@ export function CoreManagementPage() {
     }
   }
 
-  // 防抖验证路径
-  const validatePath = useCallback(async (path: string) => {
-    if (!path.trim()) {
-      setPathValidResult(null)
-      return
-    }
-    setPathValidating(true)
-    try {
-      const result = await validateBrowserCorePath(path)
-      setPathValidResult(result)
-    } finally {
-      setPathValidating(false)
-    }
-  }, [])
-
-  // 路径输入变化时触发验证（防抖）
   useEffect(() => {
     fetchBrowserProxies().then(setProxies)
-    const timer = setTimeout(() => {
-      if (editModalOpen && editForm.corePath) {
-        validatePath(editForm.corePath)
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [editForm.corePath, editModalOpen, validatePath])
+  }, [])
 
   // 表格列定义
   const columns: TableColumn<CoreDisplayInfo>[] = [
@@ -195,9 +162,6 @@ export function CoreManagementPage() {
           <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleOpenPath(record.corePath) }} title="打开目录">
             <FolderOpen className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleEdit(record) }}>
-            编辑
-          </Button>
           {!record.isDefault && (
             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleSetDefault(record.coreId) }}>
               设为默认
@@ -217,68 +181,6 @@ export function CoreManagementPage() {
       await openCorePath(corePath)
     } catch (error: any) {
       toast.error(error?.message || '打开目录失败')
-    }
-  }
-
-  // 扫描 chrome 目录，自动注册新内核
-  const handleScan = async () => {
-    setScanning(true)
-    try {
-      await scanBrowserCores()
-      await loadData()
-      toast.success('扫描完成')
-    } catch (error: any) {
-      toast.error(error?.message || '扫描失败')
-    } finally {
-      setScanning(false)
-    }
-  }
-
-  // 新增内核
-  const handleAdd = () => {
-    setEditingCore(null)
-    setEditForm({ coreName: '', corePath: '' })
-    setPathValidResult(null)
-    setEditModalOpen(true)
-  }
-
-  // 编辑内核
-  const handleEdit = (record: CoreDisplayInfo) => {
-    const core = cores.find(c => c.coreId === record.coreId)
-    if (core) {
-      setEditingCore(core)
-      setEditForm({ coreName: core.coreName, corePath: core.corePath })
-      setPathValidResult({ valid: record.pathValid, message: record.pathMessage })
-      setEditModalOpen(true)
-    }
-  }
-
-  // 保存内核
-  const handleSaveCore = async () => {
-    if (!editForm.coreName.trim()) {
-      toast.error('请输入内核名称')
-      return
-    }
-    if (!editForm.corePath.trim()) {
-      toast.error('请输入内核路径')
-      return
-    }
-    setSaving(true)
-    try {
-      const input: BrowserCoreInput = {
-        coreId: editingCore?.coreId || `core-${Date.now()}`,
-        coreName: editForm.coreName.trim(),
-        corePath: editForm.corePath.trim(),
-        isDefault: editingCore?.isDefault || false,
-      }
-      await saveBrowserCore(input)
-      await loadData()
-      setEditModalOpen(false)
-      toast.success(editingCore ? '内核已更新' : '内核已添加')
-    } catch (error: any) {
-      toast.error(error?.message || '保存失败')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -375,12 +277,10 @@ export function CoreManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">内核管理</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">管理 Chrome 内核版本和全局设置</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">通过应用内下载管理可用内核和全局设置</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="secondary" onClick={() => setDownloadModalOpen(true)}>下载内核</Button>
-          <Button size="sm" variant="secondary" onClick={handleScan} loading={scanning}>扫描内核</Button>
-          <Button size="sm" onClick={handleAdd}>新增内核</Button>
         </div>
       </div>
 
@@ -435,7 +335,7 @@ export function CoreManagementPage() {
           data={displayList}
           rowKey="coreId"
           loading={loading}
-          emptyText="暂无内核，请添加内核"
+          emptyText="暂无内核，请先下载内核"
         />
       </Card>
 
@@ -482,45 +382,6 @@ export function CoreManagementPage() {
               rows={4}
               placeholder="每行一个参数，如 --disable-sync"
             />
-          </FormItem>
-        </div>
-      </Modal>
-
-      {/* 新增/编辑内核弹窗 */}
-      <Modal
-        open={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        title={editingCore ? '编辑内核' : '新增内核'}
-        width="500px"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setEditModalOpen(false)}>取消</Button>
-            <Button onClick={handleSaveCore} loading={saving}>保存</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <FormItem label="内核名称" required>
-            <Input
-              value={editForm.coreName}
-              onChange={e => setEditForm(prev => ({ ...prev, coreName: e.target.value }))}
-              placeholder="例如：Chrome 142"
-            />
-          </FormItem>
-          <FormItem label="内核路径" required>
-            <Input
-              value={editForm.corePath}
-              onChange={e => setEditForm(prev => ({ ...prev, corePath: e.target.value }))}
-              placeholder="相对路径（如 chrome）或绝对路径"
-            />
-            {pathValidating && (
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">验证中...</p>
-            )}
-            {!pathValidating && pathValidResult && (
-              <p className={`text-xs mt-1 ${pathValidResult.valid ? 'text-green-600' : 'text-red-500'}`}>
-                {pathValidResult.message}
-              </p>
-            )}
           </FormItem>
         </div>
       </Modal>

@@ -13,7 +13,7 @@ type webglPreset struct {
 
 // 按平台分组的常见 WebGL 配置，用于自动填充。
 // vendor/renderer 值与前端 FingerprintPanel 预设保持一致（短格式），
-// fingerprint-chromium 内核会自动包装为 ANGLE 格式。
+// 浏览器内核会自动包装为 ANGLE 格式。
 var webglPresetsByPlatform = map[string][]webglPreset{
 	"windows": {
 		{"Intel", "Intel(R) UHD Graphics 630"},

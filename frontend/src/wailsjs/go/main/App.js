@@ -78,14 +78,6 @@ export function BrowserCoreList() {
   return window['go']['main']['App']['BrowserCoreList']();
 }
 
-export function BrowserCoreSave(arg1) {
-  return window['go']['main']['App']['BrowserCoreSave'](arg1);
-}
-
-export function BrowserCoreScan() {
-  return window['go']['main']['App']['BrowserCoreScan']();
-}
-
 export function BrowserCoreSetDefault(arg1) {
   return window['go']['main']['App']['BrowserCoreSetDefault'](arg1);
 }

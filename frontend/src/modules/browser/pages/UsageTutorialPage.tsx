@@ -1,6 +1,5 @@
 import { BookOpen, Download, Globe, Keyboard, Layers, Monitor } from 'lucide-react'
-import { Button, Card } from '../../../shared/components'
-import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
+import { Card } from '../../../shared/components'
 import type { ReactNode } from 'react'
 
 function StepCard({
@@ -27,20 +26,6 @@ function StepCard({
   )
 }
 
-function LinkButton({ url, children }: { url: string; children: ReactNode }) {
-  return (
-    <Button
-      size="sm"
-      variant="secondary"
-      onClick={() => {
-        void BrowserOpenURL(url)
-      }}
-    >
-      {children}
-    </Button>
-  )
-}
-
 export function UsageTutorialPage() {
   return (
     <div className="space-y-5 animate-fade-in">
@@ -59,28 +44,17 @@ export function UsageTutorialPage() {
       </Card>
 
       <StepCard icon={<Download className="w-4 h-4" />} title="1) 下载并准备浏览器内核">
-        <p>推荐使用 fingerprint-chromium。你可以优先走应用内下载：</p>
+        <p>请优先使用应用内置下载功能准备内核：</p>
         <pre className="text-xs font-mono bg-[var(--color-bg-secondary)] border border-[var(--color-border-muted)] rounded-lg p-3 overflow-x-auto">
 {`左侧菜单 -> 指纹浏览器 -> 内核管理 -> 下载内核`}
         </pre>
-        <p>如果应用内下载失败，再使用 GitHub 手动下载 ZIP 包，下载后解压到项目目录的 <code>chrome/</code> 下。</p>
-        <p>建议目录结构示例：</p>
-        <pre className="text-xs font-mono bg-[var(--color-bg-secondary)] border border-[var(--color-border-muted)] rounded-lg p-3 overflow-x-auto">
-{`chrome/
-  chrome142/
-    chrome.exe
-    ...`}
-        </pre>
-        <div className="flex items-center gap-2 flex-wrap">
-          <LinkButton url="https://github.com/adryfish/fingerprint-chromium">项目主页</LinkButton>
-          <LinkButton url="https://github.com/adryfish/fingerprint-chromium/releases">Releases 下载</LinkButton>
-        </div>
+        <p>下载完成后，内核会自动出现在“内核管理”列表中。</p>
       </StepCard>
 
       <StepCard icon={<Layers className="w-4 h-4" />} title="2) 在“内核管理”中确认可用内核">
         <p>进入左侧 <code>指纹浏览器 &gt; 内核管理</code>。</p>
-        <p>确认已识别到你解压后的内核路径，并设置一个默认内核。</p>
-        <p>如果未识别到，请检查是否存在 <code>chrome.exe</code>，以及路径是否填写正确。</p>
+        <p>确认已下载完成的内核状态正常，并设置一个默认内核。</p>
+        <p>如下载异常，请直接重新发起下载。</p>
       </StepCard>
 
       <StepCard icon={<Globe className="w-4 h-4" />} title="3) 创建代理池（HTTP/SOCKS5/Vmess/Vless/Trojan）">

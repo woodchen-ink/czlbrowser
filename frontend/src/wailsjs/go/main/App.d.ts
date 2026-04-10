@@ -45,10 +45,6 @@ export function BrowserCoreExtendedInfo():Promise<Array<browser.CoreExtendedInfo
 
 export function BrowserCoreList():Promise<Array<config.BrowserCore>>;
 
-export function BrowserCoreSave(arg1:browser.CoreInput):Promise<void>;
-
-export function BrowserCoreScan():Promise<Array<config.BrowserCore>>;
-
 export function BrowserCoreSetDefault(arg1:string):Promise<void>;
 
 export function BrowserCoreValidate(arg1:string):Promise<browser.CoreValidateResult>;

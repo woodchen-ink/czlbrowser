@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, CheckCircle, ChevronDown, ChevronRight, ChevronUp, Copy, Edit2, FileText, Key, Play, Plus, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, LayoutGrid, List } from 'lucide-react'
+import { Activity, ChevronDown, ChevronRight, ChevronUp, Copy, FileText, Key, Play, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, LayoutGrid, List } from 'lucide-react'
 import { Badge, Button, Card, FormItem, Input, Modal, StatCard, Table, Textarea, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
-import type { BrowserCore, BrowserCoreInput, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount } from '../types'
+import type { BrowserCore, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount } from '../types'
 import { InstanceFilterBar, EMPTY_FILTERS } from '../components/InstanceFilterBar'
 import type { InstanceFilters } from '../components/InstanceFilterBar'
 import { KeywordsModal } from '../components/KeywordsModal'
@@ -19,12 +19,10 @@ import {
   fetchBrowserSettings,
   fetchGroups,
   restartBrowserInstance,
-  saveBrowserCore,
   saveBrowserSettings,
   setDefaultBrowserCore,
   startBrowserInstance,
   stopBrowserInstance,
-  validateBrowserCorePath,
   validateProxyConfig,
 } from '../api'
 
@@ -205,10 +203,6 @@ export function BrowserListPage() {
 
   // 内核管理
   const [cores, setCores] = useState<BrowserCore[]>([])
-  const [coreModalOpen, setCoreModalOpen] = useState(false)
-  const [coreForm, setCoreForm] = useState<BrowserCoreInput>({ coreId: '', coreName: '', corePath: '', isDefault: false })
-  const [coreValidation, setCoreValidation] = useState<{ valid: boolean; message: string } | null>(null)
-  const [savingCore, setSavingCore] = useState(false)
 
   const loadProfiles = async () => {
     setLoading(true)
@@ -463,44 +457,6 @@ export function BrowserListPage() {
     }
   }
 
-  // 内核管理
-  const handleOpenCoreModal = (core?: BrowserCore) => {
-    setCoreForm(core ? { ...core } : { coreId: '', coreName: '', corePath: '', isDefault: false })
-    setCoreValidation(null)
-    setCoreModalOpen(true)
-  }
-
-  const handleValidateCorePath = async () => {
-    if (!coreForm.corePath.trim()) {
-      setCoreValidation({ valid: false, message: '请输入路径' })
-      return
-    }
-    const result = await validateBrowserCorePath(coreForm.corePath)
-    setCoreValidation(result)
-  }
-
-  const handleSaveCore = async () => {
-    if (!coreForm.coreName.trim()) {
-      toast.error('请输入内核名称')
-      return
-    }
-    if (!coreForm.corePath.trim()) {
-      toast.error('请输入内核路径')
-      return
-    }
-    setSavingCore(true)
-    try {
-      await saveBrowserCore(coreForm)
-      toast.success('内核已保存')
-      setCoreModalOpen(false)
-      loadCores()
-    } catch (error: any) {
-      toast.error(error?.message || '保存失败')
-    } finally {
-      setSavingCore(false)
-    }
-  }
-
   const handleDeleteCore = async (coreId: string) => {
     if (cores.length <= 1) {
       toast.error('至少保留一个内核')
@@ -630,7 +586,6 @@ export function BrowserListPage() {
           {!record.isDefault && (
             <Button size="sm" variant="ghost" onClick={() => handleSetDefaultCore(record.coreId)} title="设为默认"><Star className="w-4 h-4" /></Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => handleOpenCoreModal(record)} title="编辑"><Edit2 className="w-4 h-4" /></Button>
           <Button size="sm" variant="ghost" onClick={() => handleDeleteCore(record.coreId)} title="删除"><Trash2 className="w-4 h-4" /></Button>
         </div>
       ),
@@ -817,9 +772,6 @@ export function BrowserListPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-[var(--color-text-primary)]">内核管理</span>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleOpenCoreModal()}><Plus className="w-4 h-4" />新增内核</Button>
-              </div>
             </div>
             <Card padding="none">
               <Table columns={coreColumns} data={cores} rowKey="coreId" />
@@ -838,28 +790,6 @@ export function BrowserListPage() {
           </FormItem>
           <FormItem label="默认代理">
             <Input value={settings.defaultProxy} onChange={e => setSettings(prev => ({ ...prev, defaultProxy: e.target.value }))} placeholder="http://127.0.0.1:7890" />
-          </FormItem>
-        </div>
-      </Modal>
-
-      {/* 内核编辑弹窗 */}
-      <Modal open={coreModalOpen} onClose={() => setCoreModalOpen(false)} title={coreForm.coreId ? '编辑内核' : '新增内核'} width="500px"
-        footer={<><Button variant="secondary" onClick={() => setCoreModalOpen(false)}>取消</Button><Button onClick={handleSaveCore} loading={savingCore}>保存</Button></>}>
-        <div className="space-y-4">
-          <FormItem label="内核名称" required>
-            <Input value={coreForm.coreName} onChange={e => setCoreForm(prev => ({ ...prev, coreName: e.target.value }))} placeholder="Chrome 142" />
-          </FormItem>
-          <FormItem label="内核路径" required>
-            <div className="flex gap-2">
-              <Input value={coreForm.corePath} onChange={e => { setCoreForm(prev => ({ ...prev, corePath: e.target.value })); setCoreValidation(null) }} placeholder="chrome 或 D:/browsers/chrome-120" className="flex-1" />
-              <Button variant="secondary" onClick={handleValidateCorePath}>验证</Button>
-            </div>
-            {coreValidation && (
-              <div className={`flex items-center gap-1 mt-1 text-sm ${coreValidation.valid ? 'text-green-600' : 'text-red-600'}`}>
-                {coreValidation.valid ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {coreValidation.message}
-              </div>
-            )}
           </FormItem>
         </div>
       </Modal>

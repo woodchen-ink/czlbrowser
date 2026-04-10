@@ -383,24 +383,6 @@ export namespace browser {
 	        this.instanceCount = source["instanceCount"];
 	    }
 	}
-	export class CoreInput {
-	    coreId: string;
-	    coreName: string;
-	    corePath: string;
-	    isDefault: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new CoreInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.coreId = source["coreId"];
-	        this.coreName = source["coreName"];
-	        this.corePath = source["corePath"];
-	        this.isDefault = source["isDefault"];
-	    }
-	}
 	export class CoreValidateResult {
 	    valid: boolean;
 	    message: string;

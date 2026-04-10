@@ -6,16 +6,6 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue)](https://github.com/woodchen-ink/CZL-Browser/releases)
 [![Issues](https://img.shields.io/github/issues/woodchen-ink/CZL-Browser)](https://github.com/woodchen-ink/CZL-Browser/issues)
 
-## 推荐内核项目
-
-CZL Browser 当前推荐配套使用的浏览器内核，来源于开源项目 [fingerprint-chromium](https://github.com/adryfish/fingerprint-chromium)。
-
-如果你正在寻找可直接下载和维护的指纹内核版本，建议先查看它的 Releases 页面：
-
-- <https://github.com/adryfish/fingerprint-chromium/releases>
-
-这个项目为 CZL Browser 的内核准备提供了直接可用的基础来源，这里先对原项目做明确推荐与致谢。
-
 CZL Browser 的目标很明确：在一台 Windows 设备上，帮助用户稳定管理多个彼此隔离的浏览器实例，并配合代理池、浏览器内核和快捷启动能力完成日常运营或测试工作。
 
 ## 目录
@@ -73,7 +63,7 @@ CZL Browser 适合以下场景：
 
 - 查看实例总数、运行中实例、代理节点数量和内核版本
 - 从首页快速进入 `实例列表`、`代理池配置`、`内核管理`、`系统设置`
-- 查看客户端版本、运行环境、数据存储和当前实例运行状态
+- 查看客户端版本、运行状态和资源占用概览
 
 ### 2. 实例列表
 
@@ -131,17 +121,8 @@ CZL Browser 适合以下场景：
 代理运行时已经随仓库提供，你只需要准备浏览器内核。
 
 1. 打开应用，进入 `指纹浏览器 > 内核管理`
-2. 优先使用应用内下载功能准备内核
-3. 如果手动准备内核，请确保目录下存在 `chrome.exe`
-
-建议目录结构：
-
-```text
-chrome/
-  chrom-142/
-    chrome.exe
-    ...
-```
+2. 使用应用内下载功能准备内核
+3. 下载完成后，在内核管理页面确认状态正常并设置默认内核
 
 ### 第一次使用建议流程
 
@@ -160,7 +141,7 @@ chrome/
 | 绑定实例代理 | `实例编辑页` | 给指定实例分配目标代理节点 |
 | 启动实例 | `实例列表` | 单击启动按钮即可运行目标实例 |
 | 快速打开实例 | `Ctrl + K` | 可按实例名、标签、关键字快速检索 |
-| 管理浏览器内核 | `内核管理` | 新增、编辑、删除和设置默认内核 |
+| 管理浏览器内核 | `内核管理` | 下载内核、删除内核和设置默认内核 |
 | 验证代理结果 | 启动实例后访问 IP 检测网站 | 核对 IP、地区、ASN、风险值 |
 
 ## 常见问题

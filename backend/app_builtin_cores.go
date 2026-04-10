@@ -31,6 +31,13 @@ var builtinCoreSources = []struct {
 		Description: "标准 Chrome 内核，TLS/指纹完全真实，推荐使用",
 		DownloadURL: "https://github.com/woodchen-ink/Chrome-exe/releases/download/146.0.7680.80/Chrome-bin.zip",
 	},
+	{
+		Id:          "chrome-stable-147",
+		Name:        "Chrome",
+		Version:     "147.0.7727.56",
+		Description: "标准 Chrome 内核，TLS/指纹完全真实，推荐使用",
+		DownloadURL: "https://github.com/woodchen-ink/Chrome-exe/releases/download/147.0.7727.56/Chrome-bin.zip",
+	},
 }
 
 // BrowserBuiltinCores 返回内置可用内核列表，标记已安装状态

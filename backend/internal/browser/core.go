@@ -92,13 +92,11 @@ func (m *Manager) ListCores() []Core {
 	return m.Config.Browser.Cores
 }
 
-// SaveCore 保存内核配置（新增或更新）
-func (m *Manager) SaveCore(input CoreInput) error {
+// RegisterDownloadedCore 注册通过应用内下载完成的内核。
+func (m *Manager) RegisterDownloadedCore(coreName string, corePath string) error {
 	log := logger.New("Browser")
-	coreId := strings.TrimSpace(input.CoreId)
-	coreName := strings.TrimSpace(input.CoreName)
-	corePath := strings.TrimSpace(input.CorePath)
-
+	coreName = strings.TrimSpace(coreName)
+	corePath = strings.TrimSpace(corePath)
 	if coreName == "" {
 		return fmt.Errorf("内核名称不能为空")
 	}
@@ -106,53 +104,31 @@ func (m *Manager) SaveCore(input CoreInput) error {
 		return fmt.Errorf("内核路径不能为空")
 	}
 
+	isDefault := len(m.ListCores()) == 0
+	core := Core{
+		CoreId:    uuid.NewString(),
+		CoreName:  coreName,
+		CorePath:  corePath,
+		IsDefault: isDefault,
+	}
+
 	if m.CoreDAO != nil {
-		if coreId == "" {
-			coreId = uuid.NewString()
+		if core.IsDefault {
+			_ = m.CoreDAO.SetDefault("")
 		}
-		if input.IsDefault {
-			if err := m.CoreDAO.SetDefault(""); err != nil {
-				// SetDefault 空串只清除，忽略错误
-				_ = err
-			}
-		}
-		core := Core{CoreId: coreId, CoreName: coreName, CorePath: corePath, IsDefault: input.IsDefault}
 		if err := m.CoreDAO.Upsert(core); err != nil {
 			return err
 		}
-		// 同步内存
 		m.syncCoresFromDAO()
-		log.Info("内核配置保存", logger.F("core_id", coreId), logger.F("core_name", coreName))
+		log.Info("下载内核已注册", logger.F("core_id", core.CoreId), logger.F("core_name", core.CoreName))
 		return nil
 	}
 
-	// 降级：写 config.yaml
-	existingIndex := -1
-	for i, core := range m.Config.Browser.Cores {
-		if coreId != "" && strings.EqualFold(core.CoreId, coreId) {
-			existingIndex = i
-			break
-		}
+	if core.IsDefault {
+		m.clearDefaultCore()
 	}
-	if existingIndex >= 0 {
-		m.Config.Browser.Cores[existingIndex].CoreName = coreName
-		m.Config.Browser.Cores[existingIndex].CorePath = corePath
-		if input.IsDefault {
-			m.clearDefaultCore()
-			m.Config.Browser.Cores[existingIndex].IsDefault = true
-		}
-	} else {
-		if coreId == "" {
-			coreId = uuid.NewString()
-		}
-		newCore := Core{CoreId: coreId, CoreName: coreName, CorePath: corePath,
-			IsDefault: input.IsDefault || len(m.Config.Browser.Cores) == 0}
-		if newCore.IsDefault {
-			m.clearDefaultCore()
-		}
-		m.Config.Browser.Cores = append(m.Config.Browser.Cores, newCore)
-	}
-	log.Info("内核配置保存（文件）", logger.F("core_id", coreId))
+	m.Config.Browser.Cores = append(m.Config.Browser.Cores, core)
+	log.Info("下载内核已注册（文件）", logger.F("core_id", core.CoreId), logger.F("core_name", core.CoreName))
 	return m.Config.Save(m.ResolveRelativePath("config.yaml"))
 }
 

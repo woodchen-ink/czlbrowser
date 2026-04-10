@@ -123,8 +123,8 @@ export function DashboardPage() {
           <div className="space-y-1">
             {[
               { label: '系统版本', value: '1.0.0' },
-              { label: '运行环境', value: 'Wails v2 + React' },
-              { label: '数据存储', value: 'SQLite + YAML' },
+              { label: '客户端类型', value: '本地桌面客户端' },
+              { label: '数据模式', value: '本地保存' },
               { label: '内存占用', value: loading ? '-' : `${stats.memUsedMB} MB` },
               { label: '实例运行', value: loading ? '-' : `${stats.runningInstances} / ${stats.totalInstances}` },
             ].map(item => (

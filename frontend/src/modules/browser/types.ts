@@ -54,13 +54,6 @@ export interface BrowserCore {
   isDefault: boolean
 }
 
-export interface BrowserCoreInput {
-  coreId: string
-  coreName: string
-  corePath: string
-  isDefault: boolean
-}
-
 export interface BrowserCoreValidateResult {
   valid: boolean
   message: string

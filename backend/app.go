@@ -375,7 +375,6 @@ type BrowserTab = browser.Tab
 type BrowserSettings = browser.Settings
 type BrowserProxy = browser.Proxy
 type BrowserCore = browser.Core
-type BrowserCoreInput = browser.CoreInput
 type BrowserCoreValidateResult = browser.CoreValidateResult
 type BrowserCoreExtendedInfo = browser.CoreExtendedInfo
 
@@ -450,10 +449,6 @@ func (a *App) BrowserCoreList() []BrowserCore {
 	return a.browserMgr.ListCores()
 }
 
-func (a *App) BrowserCoreSave(input BrowserCoreInput) error {
-	return a.browserMgr.SaveCore(input)
-}
-
 func (a *App) BrowserCoreDelete(coreId string) error {
 	return a.browserMgr.DeleteCore(coreId)
 }
@@ -468,12 +463,6 @@ func (a *App) BrowserCoreValidate(corePath string) BrowserCoreValidateResult {
 
 func (a *App) BrowserCoreExtendedInfo() []BrowserCoreExtendedInfo {
 	return a.browserMgr.GetCoresExtendedInfo()
-}
-
-// BrowserCoreScan 重新扫描 chrome 目录，自动注册新内核
-func (a *App) BrowserCoreScan() []BrowserCore {
-	a.autoDetectCores()
-	return a.browserMgr.ListCores()
 }
 
 // BrowserCoreDownload 在线下载并自动解压配置内核
