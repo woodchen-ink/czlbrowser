@@ -11,13 +11,22 @@
   box-sizing: border-box;
 }
 
+@font-face {
+  font-family: "CZL";
+  src: url("/fonts/CZL.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+
 html {
   font-size: 16px;
 }
 
 body {
   min-height: 100vh;
-  font-family: 'Segoe UI Variable', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: "CZL",'Segoe UI Variable', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background-color: var(--color-bg-base);
   background-image:
     radial-gradient(circle at top, var(--color-accent-muted) 0%, transparent 45%),
