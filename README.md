@@ -167,6 +167,21 @@ CZL Browser 适合以下场景：
 - 增强实例模板、批量管理和检索体验
 - 优化公开版本的首次使用引导与基础说明
 
+## 商业化实施文档
+
+商业化、企业版和在线更新的分阶段实施文档已整理到：
+
+- `docs/commercialization/README.md`
+- `docs/commercialization/00-overview.md`
+- `docs/commercialization/01-release-and-updates.md`
+- `docs/commercialization/02-browser-control-plane.md`
+- `docs/commercialization/03-client-foundation.md`
+- `docs/commercialization/04-billing-and-proxy-offers.md`
+- `docs/commercialization/05-enterprise-workbench.md`
+- `docs/commercialization/06-ops-backoffice-and-analytics.md`
+
+这些文档定义了 `CZL Connect + Browser Control Plane + 单客户端双模式` 的职责边界、发版更新链路、企业工作台和商业化落地顺序，后续相关改动以这些文档为准同步推进。
+
 ## 贡献
 
 欢迎通过 Issue 和 Pull Request 参与改进。

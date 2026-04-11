@@ -8,6 +8,8 @@ CZL Browser is a Windows desktop application for managing isolated browser insta
 
 Key capabilities: multi-profile browser management, proxy pool (HTTP/SOCKS5/Clash/Xray/Sing-Box), Chrome fingerprint spoofing, quick launch (Ctrl+K), backup/restore, OAuth2 login via CZL Connect.
 
+Commercialization and enterprise rollout planning lives in `docs/commercialization/`. When implementing update delivery, workspaces, entitlements, enterprise features, or billing-adjacent flows, align changes with those documents first.
+
 ## Build & Development Commands
 
 ```bash
