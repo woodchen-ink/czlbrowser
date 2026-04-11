@@ -7,8 +7,8 @@
 // 项目基础信息
 export const projectConfig = {
   name: 'CZL Browser',
-  shortName: '架',
-  description: '基于 Wails + React 的桌面应用脚手架',
+  shortName: 'CB',
+  description: 'CZL公司开发的指纹浏览器',
   version: '1.0.0',
   primaryColor: 'primary',
 }

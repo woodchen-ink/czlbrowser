@@ -1,9 +1,5 @@
 // Settings 模块 API
-import type { AppSettings } from './types'
 import { defaultSettings } from './types'
-
-// 本地存储 key
-const SETTINGS_KEY = 'app_settings'
 
 const getBindings = async () => {
   try {
@@ -32,36 +28,6 @@ export interface BackupActionResult {
   }>
 }
 
-// 获取设置
-export async function fetchSettings(): Promise<AppSettings> {
-  try {
-    const stored = localStorage.getItem(SETTINGS_KEY)
-    if (stored) {
-      return { ...defaultSettings, ...JSON.parse(stored) }
-    }
-  } catch (error) {
-    console.error('Failed to load settings:', error)
-  }
-  return defaultSettings
-}
-
-// 保存设置
-export async function saveSettings(settings: AppSettings): Promise<boolean> {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-    return true
-  } catch (error) {
-    console.error('Failed to save settings:', error)
-    return false
-  }
-}
-
-// 重置设置
-export async function resetSettings(): Promise<AppSettings> {
-  localStorage.removeItem(SETTINGS_KEY)
-  return defaultSettings
-}
-
 export async function initializeSystemData(): Promise<BackupActionResult> {
   const bindings: any = await getBindings()
   if (!bindings?.BackupInitializeSystem) {
@@ -85,3 +51,4 @@ export async function importSystemConfig(resetFirst: boolean): Promise<BackupAct
   }
   return (await bindings.BackupImportPackage(resetFirst)) || {}
 }
+
