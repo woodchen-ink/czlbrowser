@@ -9,6 +9,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
 const THEME_STORAGE_KEY = 'app-theme'
+const VALID_THEMES: ThemeType[] = ['light', 'dark']
 
 interface ThemeProviderProps {
   children: ReactNode
@@ -17,9 +18,8 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children, defaultTheme = DEFAULT_THEME }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<ThemeType>(() => {
-    // 从 localStorage 读取保存的主题
     const saved = localStorage.getItem(THEME_STORAGE_KEY)
-    if (saved && ['dark', 'light', 'cream', 'mint', 'ocean'].includes(saved)) {
+    if (saved && VALID_THEMES.includes(saved as ThemeType)) {
       return saved as ThemeType
     }
     return defaultTheme
@@ -30,7 +30,6 @@ export function ThemeProvider({ children, defaultTheme = DEFAULT_THEME }: ThemeP
     localStorage.setItem(THEME_STORAGE_KEY, newTheme)
   }
 
-  // 应用主题到 document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])

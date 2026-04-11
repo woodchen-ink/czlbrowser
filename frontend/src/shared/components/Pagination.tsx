@@ -104,7 +104,7 @@ export function Pagination({
               onClick={() => onChange(page)}
               className={`min-w-[32px] h-8 px-2 rounded-md text-sm font-medium transition-colors ${
                 page === current
-                  ? 'bg-[var(--color-accent)] text-white'
+                  ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
                   : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)]'
               }`}
             >

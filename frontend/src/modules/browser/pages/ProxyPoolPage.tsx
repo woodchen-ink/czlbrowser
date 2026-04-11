@@ -533,9 +533,9 @@ export function ProxyPoolPage() {
     const val = latencyMap[record.proxyId]
     if (val === undefined) return <span className="text-[var(--color-text-muted)] text-xs">-</span>
     if (val === -1) return <span className="text-[var(--color-text-muted)] text-xs animate-pulse">测试中...</span>
-    if (val === -2) return <span className="text-red-500 text-xs">超时</span>
-    if (val === -3) return <span className="text-gray-400 text-xs">不支持</span>
-    const color = val < 200 ? 'text-green-500' : val < 500 ? 'text-yellow-500' : 'text-red-500'
+    if (val === -2) return <span className="text-[var(--color-error)] text-xs">超时</span>
+    if (val === -3) return <span className="text-[var(--color-text-muted)] text-xs">不支持</span>
+    const color = val < 200 ? 'text-[var(--color-success)]' : val < 500 ? 'text-[var(--color-warning)]' : 'text-[var(--color-error)]'
     return <span className={`text-xs font-medium ${color}`}>{val} ms</span>
   }
 
@@ -559,7 +559,7 @@ export function ProxyPoolPage() {
     if (!result.ok) {
       return (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-red-500 truncate max-w-[120px]" title={result.error || '检测失败'}>失败</span>
+          <span className="text-xs text-[var(--color-error)] truncate max-w-[120px]" title={result.error || '检测失败'}>失败</span>
           <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openIPHealthDetail(record.proxyId) }}>原始</Button>
         </div>
       )
@@ -863,7 +863,7 @@ export function ProxyPoolPage() {
                 代理ID：{currentIPHealthDetail.proxyId} | 来源：{currentIPHealthDetail.source} | 时间：{currentIPHealthDetail.updatedAt}
               </div>
               {!currentIPHealthDetail.ok && (
-                <div className="text-sm text-red-500">{currentIPHealthDetail.error || '检测失败'}</div>
+                <div className="text-sm text-[var(--color-error)]">{currentIPHealthDetail.error || '检测失败'}</div>
               )}
               <pre className="max-h-[420px] overflow-auto text-xs leading-5 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-3">
                 {JSON.stringify(currentIPHealthDetail.rawData || {}, null, 2)}

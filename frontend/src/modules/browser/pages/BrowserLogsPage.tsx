@@ -23,8 +23,8 @@ const levelVariant = (level: string) => {
 
 const levelColor = (level: string) => {
   switch (level) {
-    case 'ERROR': return 'text-red-500'
-    case 'WARN': return 'text-yellow-500'
+    case 'ERROR': return 'text-[var(--color-error)]'
+    case 'WARN': return 'text-[var(--color-warning)]'
     case 'DEBUG': return 'text-[var(--color-text-muted)]'
     default: return 'text-[var(--color-text-secondary)]'
   }
@@ -113,7 +113,7 @@ export function BrowserLogsPage() {
               onClick={() => setLevelFilter(l)}
               className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
                 levelFilter === l
-                  ? 'bg-[var(--color-accent)] text-white'
+                  ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
                   : 'bg-[var(--color-bg-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
               }`}
             >

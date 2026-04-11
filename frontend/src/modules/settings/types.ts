@@ -31,7 +31,7 @@ export const defaultSettings: AppSettings = {
   appName: 'CZL Browser',
   appDescription: '基于 Wails + React 的桌面应用',
   theme: 'light',
-  primaryColor: '#3B82F6',
+  primaryColor: 'var(--color-accent)',
   language: 'zh-CN',
   enableNotifications: true,
   enableAutoSave: true,

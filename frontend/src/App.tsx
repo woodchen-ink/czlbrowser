@@ -8,7 +8,6 @@ import { DashboardPage } from './modules/dashboard'
 import { SettingsPage } from './modules/settings'
 import { ProfilePage } from './modules/profile'
 import { AdminKeygenPage } from './modules/profile/AdminKeygenPage'
-import { ChartsPage } from './modules/charts'
 import { LoginPage } from './modules/auth'
 import {
   BrowserListPage,
@@ -141,7 +140,9 @@ function CloseConfirmModal() {
     >
       <div className="flex flex-col items-center pt-2 pb-6 px-4">
         <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
-          importInProgress ? 'bg-amber-50 text-amber-500' : 'bg-red-50 text-red-500'
+          importInProgress
+            ? 'bg-[var(--color-warning-soft)] text-[var(--color-warning)]'
+            : 'bg-[var(--color-error-soft)] text-[var(--color-error)]'
         }`}>
           <AlertCircle className="w-6 h-6" />
         </div>
@@ -211,7 +212,6 @@ function AuthenticatedApp() {
     <Layout>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/charts" element={<ChartsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/admin/keygen" element={<AdminKeygenPage />} />

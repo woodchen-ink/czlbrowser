@@ -59,7 +59,7 @@ function BatchToolbar({
         <Button size="sm" variant="secondary" onClick={onBatchStop} loading={batchLoading} title="批量停止">
           <Square className="w-3.5 h-3.5" />停止
         </Button>
-        <Button size="sm" variant="ghost" onClick={onBatchDelete} title="批量删除" className="text-red-500 hover:text-red-600">
+        <Button size="sm" variant="ghost" onClick={onBatchDelete} title="批量删除" className="text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)]">
           <Trash2 className="w-3.5 h-3.5" />删除
         </Button>
       </div>
@@ -111,7 +111,7 @@ function KeywordInlineRow({ keywords }: { keywords: string[] }) {
       {isOverflowing && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="shrink-0 flex items-center gap-1 text-xs font-medium text-[var(--color-accent)] hover:text-indigo-400 mt-1 focus:outline-none"
+          className="shrink-0 flex items-center gap-1 text-xs font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] mt-1 focus:outline-none"
         >
           {expanded ? (
             <>收回 <ChevronUp className="w-3.5 h-3.5" /></>
@@ -562,7 +562,7 @@ export function BrowserListPage() {
           <Button size="sm" variant="ghost" onClick={() => openKwModal(record)} title="关键字"><Key className="w-3.5 h-3.5" /></Button>
           <Link to={`/browser/edit/${record.profileId}`}><Button size="sm" variant="ghost" title="配置"><Settings className="w-3.5 h-3.5" /></Button></Link>
           <Button size="sm" variant="ghost" onClick={() => openCopyModal(record)} title="克隆"><Copy className="w-3.5 h-3.5" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => handleDelete(record.profileId)} title="删除"><Trash2 className="w-3.5 h-3.5 text-red-500" /></Button>
+          <Button size="sm" variant="ghost" onClick={() => handleDelete(record.profileId)} title="删除"><Trash2 className="w-3.5 h-3.5 text-[var(--color-error)]" /></Button>
         </div>
       ),
     },
@@ -575,7 +575,7 @@ export function BrowserListPage() {
     {
       key: 'isDefault',
       title: '默认',
-      render: (value) => value ? <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" /> : null,
+      render: (value) => value ? <Star className="w-4 h-4 text-[var(--color-warning)] fill-[var(--color-warning)]" /> : null,
     },
     {
       key: 'actions',
@@ -634,7 +634,7 @@ export function BrowserListPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard title="配置总数" value={`${profiles.length}`} icon={<FileText className="w-5 h-5" />} />
             <StatCard title="运行中实例" value={`${runningCount}`} icon={<Activity className="w-5 h-5" />} />
-            <StatCard title="停止实例" value={`${profiles.length - runningCount}`} icon={<Square className="w-5 h-5 text-gray-400" />} />
+            <StatCard title="停止实例" value={`${profiles.length - runningCount}`} icon={<Square className="w-5 h-5 text-[var(--color-text-muted)]" />} />
           </div>
 
           <InstanceFilterBar
@@ -684,7 +684,7 @@ export function BrowserListPage() {
                 return (
                   <div
                     key={record.profileId}
-                    className={`flex flex-col border rounded-xl bg-[var(--color-bg-surface)] p-3 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-all duration-200 h-fit max-h-[320px] overflow-y-auto
+                    className={`flex flex-col border rounded-xl bg-[var(--color-bg-surface)] p-3 shadow-[var(--shadow-sm)] transition-all duration-200 h-fit max-h-[320px] overflow-y-auto
                         ${isSelected ? 'border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/20' : 'border-[var(--color-border-default)] hover:border-[var(--color-accent)]'}
                       `}
                   >
@@ -725,7 +725,7 @@ export function BrowserListPage() {
                         <Button size="sm" variant="ghost" onClick={() => openKwModal(record)} title="关键字管理" className="px-3"><Key className="w-4 h-4 mr-1.5" />关键字</Button>
                         <Link to={`/browser/edit/${record.profileId}`}><Button size="sm" variant="ghost" title="配置" className="px-3"><Settings className="w-4 h-4 mr-1.5" />配置</Button></Link>
                         <Button size="sm" variant="ghost" onClick={() => openCopyModal(record)} title="克隆" className="px-3"><Copy className="w-4 h-4 mr-1.5" />克隆</Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(record.profileId)} title="删除" className="px-3 text-red-500 hover:text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4 mr-1.5" />删除</Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(record.profileId)} title="删除" className="px-3 text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)]"><Trash2 className="w-4 h-4 mr-1.5" />删除</Button>
                       </div>
                     </div>
 
@@ -811,9 +811,9 @@ export function BrowserListPage() {
           </>
         }
       >
-        <div className="space-y-3">
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-[var(--color-bg-secondary)]">
-            <XCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-[var(--color-bg-secondary)]">
+            <XCircle className="w-5 h-5 text-[var(--color-error)] mt-0.5 shrink-0" />
             <p className="text-sm text-[var(--color-text-primary)]">{proxyErrorMsg}</p>
           </div>
           <p className="text-sm text-[var(--color-text-muted)]">请前往编辑页面重新选择可用链路；如果是订阅导入，先刷新订阅并确认该节点仍存在。</p>

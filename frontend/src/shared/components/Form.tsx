@@ -129,7 +129,7 @@ export function Switch({ checked, onChange, disabled }: SwitchProps) {
     >
       <span
         className={clsx(
-          'inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-150',
+          'inline-block h-4 w-4 transform rounded-full bg-[var(--color-bg-elevated)] shadow-sm transition-transform duration-150',
           checked ? 'translate-x-4' : 'translate-x-0.5'
         )}
       />

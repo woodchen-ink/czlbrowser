@@ -7,11 +7,16 @@ interface ThemeSwitcherProps {
 }
 
 const themePreview: Record<ThemeType, { bg: string; sidebar: string; accent: string }> = {
-  dark: { bg: '#0c0c0e', sidebar: '#18181b', accent: '#fafafa' },
-  light: { bg: '#f8fafc', sidebar: '#ffffff', accent: '#1e293b' },
-  cream: { bg: '#faf7f2', sidebar: '#fffdf8', accent: '#8b7355' },
-  mint: { bg: '#f6f9f8', sidebar: '#fbfdfc', accent: '#3d5a4c' },
-  ocean: { bg: '#f5f8fa', sidebar: '#fafcfd', accent: '#3a5068' },
+  light: {
+    bg: 'var(--color-preview-light-bg)',
+    sidebar: 'var(--color-preview-light-sidebar)',
+    accent: 'var(--color-preview-light-accent)',
+  },
+  dark: {
+    bg: 'var(--color-preview-dark-bg)',
+    sidebar: 'var(--color-preview-dark-sidebar)',
+    accent: 'var(--color-preview-dark-accent)',
+  },
 }
 
 export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
@@ -19,75 +24,75 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
 
   return (
     <div className={clsx('space-y-4', className)}>
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {themeConfigs.map((config) => {
           const isActive = theme === config.id
           const preview = themePreview[config.id]
-          
+
           return (
             <button
               key={config.id}
               onClick={() => setTheme(config.id)}
               className={clsx(
-                'group relative flex flex-col items-center gap-2.5 p-3 rounded-xl border-2 transition-all duration-200',
+                'group relative flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200',
                 isActive
-                  ? 'border-[var(--color-accent)] bg-[var(--color-accent-muted)]'
-                  : 'border-[var(--color-border-default)] hover:border-[var(--color-border-strong)] bg-[var(--color-bg-surface)]'
+                  ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+                  : 'border-[var(--color-border-default)] bg-[var(--color-bg-surface)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-subtle)]'
               )}
               title={config.description}
             >
-              {/* 主题预览 - 模拟界面布局 */}
-              <div 
-                className="w-full aspect-[4/3] rounded-lg overflow-hidden border border-black/10"
+              <div
+                className="w-28 shrink-0 overflow-hidden rounded-xl border border-[var(--color-preview-line)]"
                 style={{ backgroundColor: preview.bg }}
               >
-                {/* 侧边栏 */}
-                <div 
-                  className="w-1/4 h-full float-left"
-                  style={{ backgroundColor: preview.sidebar }}
-                >
-                  <div 
-                    className="w-2/3 h-1 mt-2 mx-auto rounded-full"
-                    style={{ backgroundColor: preview.accent }}
-                  />
-                  <div className="mt-2 mx-1 space-y-1">
-                    <div className="h-0.5 rounded-full bg-black/10" />
-                    <div className="h-0.5 rounded-full bg-black/10" />
+                <div className="flex aspect-[5/4]">
+                  <div className="flex w-1/3 flex-col gap-1 px-2 py-2" style={{ backgroundColor: preview.sidebar }}>
+                    <div className="h-1 rounded-full" style={{ backgroundColor: preview.accent }} />
+                    <div className="h-1 rounded-full bg-[var(--color-preview-line)]" />
+                    <div className="h-1 rounded-full bg-[var(--color-preview-line)]" />
                   </div>
-                </div>
-                {/* 内容区 */}
-                <div className="p-1">
-                  <div className="h-1 w-1/2 rounded-full bg-black/10 mb-1" />
-                  <div className="grid grid-cols-2 gap-0.5">
-                    <div className="h-2 rounded-sm" style={{ backgroundColor: preview.sidebar }} />
-                    <div className="h-2 rounded-sm" style={{ backgroundColor: preview.sidebar }} />
+                  <div className="flex-1 px-2 py-2">
+                    <div className="mb-2 h-1.5 w-2/3 rounded-full bg-[var(--color-preview-line)]" />
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="h-6 rounded-md" style={{ backgroundColor: preview.sidebar }} />
+                      <div className="h-6 rounded-md" style={{ backgroundColor: preview.sidebar }} />
+                    </div>
+                    <div className="mt-2 h-1 rounded-full" style={{ backgroundColor: preview.accent, opacity: 0.75 }} />
                   </div>
                 </div>
               </div>
-              
-              {/* 主题名称 */}
-              <span className={clsx(
-                'text-xs font-medium transition-colors',
-                isActive ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)]'
-              )}>
-                {config.name.replace('主题', '')}
-              </span>
-              
-              {/* 选中标记 */}
-              {isActive && (
-                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-sm">
-                  <Check className="w-3 h-3 text-[var(--color-text-inverse)]" />
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className={clsx(
+                      'text-sm font-semibold transition-colors',
+                      isActive ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)]'
+                    )}
+                  >
+                    {config.name.replace('主题', '')}
+                  </span>
+                  {isActive && (
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-accent)] shadow-sm">
+                      <Check className="h-3 w-3 text-[var(--color-text-inverse)]" />
+                    </div>
+                  )}
                 </div>
+                <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{config.description}</p>
+              </div>
+
+              {isActive && (
+                <div
+                  className="absolute inset-x-4 bottom-0 h-px"
+                  style={{
+                    backgroundImage: 'linear-gradient(90deg, var(--color-brand-gradient-start), var(--color-brand-gradient-end))',
+                  }}
+                />
               )}
             </button>
           )
         })}
       </div>
-      
-      {/* 当前主题描述 */}
-      <p className="text-xs text-[var(--color-text-muted)] text-center">
-        {themeConfigs.find(c => c.id === theme)?.description}
-      </p>
     </div>
   )
 }

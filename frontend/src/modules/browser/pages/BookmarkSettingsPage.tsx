@@ -110,7 +110,7 @@ export function BookmarkSettingsPage() {
               <button
                 type="button"
                 onClick={() => handleDelete(index)}
-                className="p-1.5 rounded text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                className="p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)] transition-colors shrink-0"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

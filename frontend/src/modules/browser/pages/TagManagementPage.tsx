@@ -411,7 +411,7 @@ export function TagManagementPage() {
         </Card>
 
         {saving && (
-          <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'var(--color-overlay-soft)' }}>
             <div className="bg-[var(--color-bg-elevated)] rounded-lg px-6 py-4 text-sm text-[var(--color-text-primary)] shadow-xl">
               保存中...
             </div>

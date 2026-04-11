@@ -161,7 +161,7 @@ export function ProxyPickerModal({ open, currentProxyId, onSelect, onClose }: Pr
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: 'var(--color-overlay)' }} />
       <div
         className="relative bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-xl shadow-2xl w-[720px] max-h-[580px] flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -271,8 +271,8 @@ interface ProxyRowProps {
 function SpeedBadge({ testing, result }: { testing: boolean; result?: SpeedResult }) {
   if (testing) return <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--color-text-muted)] shrink-0" />
   if (!result) return null
-  if (!result.ok) return <span className="text-xs text-red-500 shrink-0">失败</span>
-  const color = result.latencyMs < 200 ? 'text-green-500' : result.latencyMs < 500 ? 'text-yellow-500' : 'text-red-500'
+  if (!result.ok) return <span className="text-xs text-[var(--color-error)] shrink-0">失败</span>
+  const color = result.latencyMs < 200 ? 'text-[var(--color-success)]' : result.latencyMs < 500 ? 'text-[var(--color-warning)]' : 'text-[var(--color-error)]'
   return <span className={`text-xs font-medium shrink-0 ${color}`}>{result.latencyMs}ms</span>
 }
 

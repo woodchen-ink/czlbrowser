@@ -61,7 +61,7 @@ export function Alert({
       {closable && (
         <button
           onClick={onClose}
-          className="p-0.5 rounded hover:bg-black/10 transition-colors flex-shrink-0"
+          className="p-0.5 rounded hover:bg-[var(--color-bg-muted)] transition-colors flex-shrink-0"
         >
           <X className="w-4 h-4" />
         </button>

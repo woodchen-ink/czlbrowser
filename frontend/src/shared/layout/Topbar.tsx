@@ -47,7 +47,7 @@ function NotificationDropdown({
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-[var(--color-text-primary)]">通知</span>
           {unreadCount > 0 && (
-            <span className="px-1.5 py-0.5 text-xs font-medium bg-[var(--color-accent)] text-white rounded-full">
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-[var(--color-accent)] text-[var(--color-text-inverse)] rounded-full">
               {unreadCount}
             </span>
           )}
@@ -184,7 +184,7 @@ export function Topbar() {
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-medium bg-[var(--color-error)] text-white rounded-full flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-medium bg-[var(--color-error)] text-[var(--color-text-inverse)] rounded-full flex items-center justify-center">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}

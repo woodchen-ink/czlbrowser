@@ -330,7 +330,7 @@ export function SettingsPage() {
       </div>
 
       {/* 主题设置 */}
-      <Card title="主题设置" subtitle="选择您喜欢的界面主题">
+      <Card title="主题设置">
         <ThemeSwitcher />
       </Card>
 

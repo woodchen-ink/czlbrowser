@@ -242,7 +242,7 @@ export function FingerprintPanel({ value, onChange }: FingerprintPanelProps) {
                 update({ seed: randomFingerprintSeed() })
               }
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-[var(--color-primary)] text-white hover:opacity-90 transition-opacity shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:opacity-90 transition-opacity shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             随机

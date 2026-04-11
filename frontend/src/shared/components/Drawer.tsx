@@ -54,7 +54,8 @@ export function Drawer({
     <div className="fixed inset-0 z-50">
       {/* 遮罩层 */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 backdrop-blur-sm animate-fade-in"
+        style={{ backgroundColor: 'var(--color-overlay)' }}
         onClick={closable ? onClose : undefined}
       />
 

@@ -226,7 +226,7 @@ export function BrowserDetailPage() {
 
           {profile.lastError && (
             <Card title="最近错误" subtitle="最近一次启动或运行失败原因">
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 whitespace-pre-line">
+              <div className="rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error-soft)] px-4 py-3 text-sm text-[var(--color-error)] whitespace-pre-line">
                 {profile.lastError}
               </div>
             </Card>

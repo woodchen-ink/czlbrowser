@@ -45,7 +45,7 @@ export function GroupSelector({ groups, value, onChange, placeholder = '选择�
 
   return (
     <select
-      className={`px-3 py-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${className}`}
+      className={`px-3 py-2 rounded border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] transition-colors focus:outline-none focus:border-[var(--color-border-strong)] ${className}`}
       value={value}
       onChange={e => onChange(e.target.value)}
     >
