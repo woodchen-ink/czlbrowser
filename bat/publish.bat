@@ -83,7 +83,7 @@ REM ======== [2/6] 读取版本号 ========
 echo [2/6] 读取版本号...
 
 set "VERSION="
-for /f "usebackq delims=" %%v in (`powershell -NoProfile -Command "(Get-Content wails.json | ConvertFrom-Json).info.productVersion"`) do (
+for /f "usebackq delims=" %%v in (`powershell -NoProfile -Command "(Get-Content -Encoding UTF8 wails.json | ConvertFrom-Json).info.productVersion"`) do (
     set "VERSION=%%v"
 )
 

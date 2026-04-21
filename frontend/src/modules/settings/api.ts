@@ -1,6 +1,4 @@
 // Settings 模块 API
-import { defaultSettings } from './types'
-
 const getBindings = async () => {
   try {
     return await import('../../wailsjs/go/main/App')
