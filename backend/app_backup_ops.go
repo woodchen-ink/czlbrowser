@@ -649,12 +649,14 @@ func backupResolveEntryComponentName(entry backup.ScopeEntry) string {
 	}
 }
 
-// backupEntryCacheFilter 为会包含浏览器用户数据的导出条目返回 Chromium 缓存过滤器，
-// 其余条目（内核、日志、纯数据库等）返回 nil，不做缓存过滤。
+// backupEntryCacheFilter 为会包含浏览器用户数据的导出条目返回可丢弃路径过滤器，
+// 其余条目（内核、日志、纯数据库等）返回 nil，不做过滤。
+// 通过预扫描源目录定位 profile 根，再对 profile 根内部套白名单 + 缓存黑名单。
 func backupEntryCacheFilter(entry backup.ScopeEntry) func(rel string) bool {
 	switch entry.ID {
 	case "app_data_root", "browser_user_data_root":
-		return backup.IsChromiumCacheRelPath
+		roots := backup.DetectProfileRoots(entry.SourcePath)
+		return backup.NewProfileAwareSkip(roots)
 	default:
 		return nil
 	}
@@ -1070,7 +1072,7 @@ func (a *App) backupImportFileTrees(payloadRoot string, incomingCfg *config.Conf
 		backupNormalizePath(dbPath + "-shm"): {},
 	}
 
-	appDataSkip := backupCombineSkip(backupShouldSkipAppDBFile, backup.IsChromiumCacheRelPath)
+	appDataSkip := backupCombineSkip(backupShouldSkipAppDBFile, backup.NewProfileAwareSkip(backup.DetectProfileRoots(appDataSrc)))
 	if backupPathExists(appDataSrc) {
 		if resetFirst {
 			if err := backupRemoveContentsExcept(appDataDst, keepDB); err != nil {
@@ -1088,15 +1090,16 @@ func (a *App) backupImportFileTrees(payloadRoot string, incomingCfg *config.Conf
 	userDataSrc := filepath.Join(payloadRoot, "browser", "user-data")
 	userDataDst := a.backupResolveUserDataRoot(a.config)
 	if backupPathExists(userDataSrc) {
+		userDataSkip := backup.NewProfileAwareSkip(backup.DetectProfileRoots(userDataSrc))
 		if resetFirst {
 			_ = os.RemoveAll(userDataDst)
 			if err := os.MkdirAll(userDataDst, 0755); err != nil {
 				report("browser_user_data_root", "浏览器用户数据根目录（若与 data 重合则自动去重）", err)
-			} else if err := backupSyncDir(userDataSrc, userDataDst, true, stats, backup.IsChromiumCacheRelPath); err != nil {
+			} else if err := backupSyncDir(userDataSrc, userDataDst, true, stats, userDataSkip); err != nil {
 				report("browser_user_data_root", "浏览器用户数据根目录（若与 data 重合则自动去重）", err)
 			}
 		} else {
-			if err := backupSyncDir(userDataSrc, userDataDst, false, stats, backup.IsChromiumCacheRelPath); err != nil {
+			if err := backupSyncDir(userDataSrc, userDataDst, false, stats, userDataSkip); err != nil {
 				report("browser_user_data_root", "浏览器用户数据根目录（若与 data 重合则自动去重）", err)
 			}
 		}

@@ -1,43 +1,128 @@
 package backup
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
-func TestIsChromiumCacheRelPath_SkipsCache(t *testing.T) {
-	skip := []string{
-		"profile1/Default/Cache/data_0",
-		"profile1/Default/Code Cache/js/index",
-		"profile1/Default/GPUCache/data_1",
-		"profile1/Default/Service Worker/CacheStorage/abc",
-		"profile1/Default/Service Worker/ScriptCache/def",
-		"profile1/Default/Network/Cache/index",
-		"profile1/Crashpad/reports/x.dmp",
-		"profile1/Default/DawnGraphiteCache/00",
-		"profile1/component_crx_cache/aaa",
-		"Default\\Cache\\data_2", // 系统分隔符
+// buildProfileTree 在 root 下造一个 Chromium profile 目录结构，profile 根名由 profileDir 指定。
+func buildProfileTree(t *testing.T, root, profileDir string) {
+	t.Helper()
+	mk := func(parts ...string) {
+		p := filepath.Join(append([]string{root}, parts...)...)
+		if err := os.MkdirAll(p, 0755); err != nil {
+			t.Fatalf("mkdir %s: %v", p, err)
+		}
 	}
-	for _, rel := range skip {
-		if !IsChromiumCacheRelPath(rel) {
-			t.Errorf("应判定为缓存但未命中: %s", rel)
+	touch := func(parts ...string) {
+		p := filepath.Join(append([]string{root}, parts...)...)
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatalf("mkdir parent of %s: %v", p, err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0644); err != nil {
+			t.Fatalf("write %s: %v", p, err)
+		}
+	}
+	// profile 根标志：Default 子目录 + Local State 文件
+	mk(profileDir, "Default")
+	touch(profileDir, "Local State")
+	// 账号数据
+	touch(profileDir, "Default", "Cookies")
+	touch(profileDir, "Default", "Login Data")
+	// 缓存（应跳过）
+	touch(profileDir, "Default", "Cache", "data_0")
+	// 可重建组件 / 遥测（应跳过）
+	touch(profileDir, "BrowserMetrics", "x.pma")
+	touch(profileDir, "WasmTtsEngine", "20260528.1", "bindings_main.wasm")
+}
+
+func TestDetectProfileRoots_FindsByMarker(t *testing.T) {
+	root := t.TempDir()
+	// 两个命名风格不同的 profile：UUID 与自定义名
+	buildProfileTree(t, root, "6f48a959-9bc1-4482-b797-e313c466bd4d")
+	buildProfileTree(t, root, "repro_acl")
+	// 非 profile 的业务目录
+	if err := os.MkdirAll(filepath.Join(root, "snapshots", "abc"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "app.db"), []byte("db"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	roots := DetectProfileRoots(root)
+	for _, want := range []string{"6f48a959-9bc1-4482-b797-e313c466bd4d", "repro_acl"} {
+		if _, ok := roots[want]; !ok {
+			t.Errorf("未识别 profile 根: %s (got=%v)", want, roots)
+		}
+	}
+	if _, ok := roots["snapshots"]; ok {
+		t.Errorf("snapshots 不应被识别为 profile 根")
+	}
+}
+
+func TestProfileAwareSkip_SkipsAndKeeps(t *testing.T) {
+	root := t.TempDir()
+	buildProfileTree(t, root, "repro_acl")
+	if err := os.WriteFile(filepath.Join(root, "app.db"), []byte("db"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	skip := NewProfileAwareSkip(DetectProfileRoots(root))
+
+	shouldSkip := []string{
+		"repro_acl/BrowserMetrics/x.pma",
+		"repro_acl/WasmTtsEngine/20260528.1/bindings_main.wasm",
+		"repro_acl/Default/Cache/data_0",
+		"repro_acl/Default/Service Worker/CacheStorage/a",
+	}
+	for _, rel := range shouldSkip {
+		if !skip(rel) {
+			t.Errorf("应跳过但未命中: %s", rel)
+		}
+	}
+
+	shouldKeep := []string{
+		"repro_acl",                 // profile 根本身
+		"repro_acl/Local State",     // 关键顶层文件
+		"repro_acl/Default",         // 数据目录
+		"repro_acl/Default/Cookies", // 账号数据
+		"repro_acl/Default/Login Data",
+		"repro_acl/Default/IndexedDB/https_x/000001.ldb",
+		"app.db",             // 非 profile 业务数据
+		"snapshots/abc/file", // 非 profile 目录
+		"",
+	}
+	for _, rel := range shouldKeep {
+		if skip(rel) {
+			t.Errorf("应保留但被跳过: %s", rel)
 		}
 	}
 }
 
-func TestIsChromiumCacheRelPath_KeepsPersistentData(t *testing.T) {
-	keep := []string{
-		"profile1/Default/Cookies",
-		"profile1/Default/Login Data",
-		"profile1/Default/Preferences",
-		"profile1/Default/Local Storage/leveldb/000003.log",
-		"profile1/Default/IndexedDB/https_example/000001.ldb",
-		"profile1/Default/Service Worker/Database/000005.log",
-		"profile1/Default/Bookmarks",
-		"profile1/Default/History",
-		"app.db",
-		"",
+// profile 根就是扫描根本身（browser_user_data_root 指向单个 profile 目录的情形）。
+func TestProfileAwareSkip_RootIsProfileItself(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "Default"), 0755); err != nil {
+		t.Fatal(err)
 	}
-	for _, rel := range keep {
-		if IsChromiumCacheRelPath(rel) {
-			t.Errorf("应保留但被判定为缓存: %s", rel)
-		}
+	if err := os.WriteFile(filepath.Join(root, "Default", "Cookies"), []byte("c"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Default", "Cache", "x"), []byte("c"), 0644); err == nil {
+		// 需要先建目录
+	}
+	_ = os.MkdirAll(filepath.Join(root, "BrowserMetrics"), 0755)
+	_ = os.WriteFile(filepath.Join(root, "BrowserMetrics", "x.pma"), []byte("m"), 0644)
+
+	roots := DetectProfileRoots(root)
+	if _, ok := roots["."]; !ok {
+		t.Fatalf("扫描根本身应被识别为 profile 根: %v", roots)
+	}
+	skip := NewProfileAwareSkip(roots)
+	if !skip("BrowserMetrics/x.pma") {
+		t.Errorf("根 profile 下的 BrowserMetrics 应跳过")
+	}
+	if skip("Default/Cookies") {
+		t.Errorf("根 profile 下的 Default/Cookies 应保留")
 	}
 }
