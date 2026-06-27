@@ -34,7 +34,10 @@ func TestBuildScope_DefaultConfigKeepsCoreEntries(t *testing.T) {
 	assertEntry(t, ids, "system_config_main")
 	assertEntry(t, ids, "system_config_proxies")
 	assertEntry(t, ids, "app_data_root")
-	assertEntry(t, ids, "browser_core_root")
+
+	if _, ok := ids["browser_core_root"]; ok {
+		t.Fatalf("内核目录默认不应导出，browser_core_root 不应出现")
+	}
 
 	if _, ok := ids["database_sqlite_main"]; ok {
 		t.Fatalf("默认配置下 database_sqlite_main 应被 app_data_root 覆盖，不应单独出现")
@@ -77,7 +80,10 @@ func TestBuildScope_CustomPathsIncludeNonOverlappingEntries(t *testing.T) {
 	assertEntry(t, ids, "database_sqlite_wal")
 	assertEntry(t, ids, "database_sqlite_shm")
 	assertEntry(t, ids, "logs_root")
-	assertEntry(t, ids, "browser_core_external_external-01")
+
+	if _, ok := ids["browser_core_external_external-01"]; ok {
+		t.Fatalf("额外内核目录默认不应导出，browser_core_external_* 不应出现")
+	}
 
 	dbEntry := ids["database_sqlite_main"]
 	expectedDB := filepath.Join(tempDir, "db", "main.db")

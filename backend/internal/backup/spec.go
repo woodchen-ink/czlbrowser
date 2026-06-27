@@ -148,30 +148,11 @@ func BuildScope(opts BuildOptions) (Scope, error) {
 		Description: "浏览器用户数据根目录（若与 data 重合则自动去重）",
 	})
 
-	chromeRoot := resolvePath(appRootAbs, "chrome")
-	builder.add(ScopeEntry{
-		ID:          "browser_core_root",
-		Category:    CategoryCoreData,
-		EntryType:   EntryTypeDir,
-		Required:    false,
-		SourcePath:  chromeRoot,
-		ArchivePath: "payload/browser/cores/chrome/",
-		Description: "默认内核目录",
-	})
-
-	corePaths := collectExtraCorePaths(cfg.Browser.Cores, appRootAbs, chromeRoot)
-	for idx, corePath := range corePaths {
-		coreID := fmt.Sprintf("external-%02d", idx+1)
-		builder.add(ScopeEntry{
-			ID:          "browser_core_external_" + coreID,
-			Category:    CategoryCoreData,
-			EntryType:   EntryTypeDir,
-			Required:    false,
-			SourcePath:  corePath,
-			ArchivePath: "payload/browser/cores/external/" + coreID + "/",
-			Description: "额外内核目录（来自配置 cores）",
-		})
-	}
+	// 内核目录（chrome/ 及配置 cores 指向的额外内核）默认不导出：
+	// 内核是用户自备的大体积 Chromium 二进制（单个数百 MB，多内核可达 GB 级），
+	// 不属于"配置"，会让备份包膨胀。内核的路径引用已随 config.yaml 与
+	// browser_cores 表一并导出，导入到新机器后由用户重新放置同名内核即可恢复。
+	// 导入侧仍保留对老备份包中内核目录的还原能力，故仅在导出 scope 中排除。
 
 	dbType := strings.TrimSpace(cfg.Database.Type)
 	if dbType == "" || strings.EqualFold(dbType, "sqlite") {
@@ -271,29 +252,6 @@ func BuildManifest(scope Scope, appName, appVersion string, createdAt time.Time)
 		},
 		Entries: entries,
 	}
-}
-
-func collectExtraCorePaths(cores []config.BrowserCore, appRootAbs, defaultChromeRoot string) []string {
-	result := make([]string, 0)
-	seen := make(map[string]struct{})
-	for _, core := range cores {
-		corePath := strings.TrimSpace(core.CorePath)
-		if corePath == "" {
-			continue
-		}
-		coreAbs := resolvePath(appRootAbs, corePath)
-		if isPathWithin(coreAbs, defaultChromeRoot) {
-			continue
-		}
-		key := normalizeForCompare(coreAbs)
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		result = append(result, coreAbs)
-	}
-	sort.Strings(result)
-	return result
 }
 
 func detectLogDir(appRootAbs, logPath string) string {
