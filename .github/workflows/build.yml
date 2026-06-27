@@ -116,9 +116,20 @@ jobs:
           $c = [System.IO.File]::ReadAllText($nsi, [System.Text.Encoding]::UTF8)
           [System.IO.File]::WriteAllText($nsi, $c, [System.Text.UTF8Encoding]::new($true))
 
+          # choco 安装的 makensis 不在当前会话 PATH，按常见安装路径定位。
+          $makensis = @(
+            'C:\Program Files (x86)\NSIS\makensis.exe',
+            'C:\Program Files\NSIS\makensis.exe'
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $makensis) {
+            $cmd = Get-Command makensis -ErrorAction SilentlyContinue
+            if ($cmd) { $makensis = $cmd.Source }
+          }
+          if (-not $makensis) { throw 'makensis.exe not found after NSIS install' }
+
           $staging = (Resolve-Path 'publish/staging').Path
           $ver = '${{ steps.version.outputs.fullVersion }}'
-          & makensis "/DVERSION=$ver" "/DSTAGINGDIR=$staging" 'publish/installer.nsi'
+          & $makensis "/DVERSION=$ver" "/DSTAGINGDIR=$staging" 'publish/installer.nsi'
           if ($LASTEXITCODE -ne 0) { throw "NSIS failed with exit $LASTEXITCODE" }
 
           $out = "publish/output/CZLBrowser-Setup-$ver.exe"
