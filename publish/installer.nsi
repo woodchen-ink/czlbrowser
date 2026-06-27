@@ -176,11 +176,16 @@ Section "Proxy Runtime (xray / sing-box)" SecRuntime
   File "${STAGINGDIR}\bin\sing-box.exe"
 SectionEnd
 
+; Chrome 内核为可选打包：staging 中存在 chrome\ 才生成该 section。
+; CI 构建不分发内核（chrome\ 被 gitignore），用户安装后自备内核。
+!if /FileExists "${STAGINGDIR}\chrome\*.*"
 Section "Chrome Engine" SecChrome
   SectionIn RO
   SetOutPath "$INSTDIR\chrome"
   File /r "${STAGINGDIR}\chrome\*.*"
 SectionEnd
+!define HAS_CHROME_SECTION
+!endif
 
 Section /o "Desktop Shortcut" SecDesktop
   CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_EXE}"
@@ -189,7 +194,9 @@ SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SecMain}    "CZL Browser main program and default config (required)"
   !insertmacro MUI_DESCRIPTION_TEXT ${SecRuntime} "xray and sing-box proxy tools (vless/vmess/hysteria2)"
+!ifdef HAS_CHROME_SECTION
   !insertmacro MUI_DESCRIPTION_TEXT ${SecChrome}  "Bundled Chrome engine for browser instances"
+!endif
   !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Create a shortcut on the desktop"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 

@@ -36,6 +36,10 @@ go test ./backend/internal/...
 go test ./backend/internal/config/ -run TestConfigLoad
 ```
 
+### CI (GitHub Actions)
+
+`.github/workflows/build.yml` builds the Windows installer on every push to `main`/`master` (doc-only changes ignored) and on `workflow_dispatch`. Steps mirror `bat\build.bat`/`bat\publish.bat` in PowerShell: install deps → `wails generate module` → `wails build -platform windows/amd64` → assemble staging → NSIS package. The installer **omits the chrome kernel** (gitignored, unavailable in CI); `installer.nsi` makes the `SecChrome` section conditional via `!if /FileExists`, so the same script packages with-kernel locally and without-kernel in CI. Each run uploads the installer as a 90-day artifact and publishes a GitHub Release tagged `v<productVersion>-build<run_number>` (unique per run). Windows-only by design — proxy runtime, NSIS and WebView2 are Windows-specific.
+
 ## Architecture
 
 ### Wails Binding Pattern

@@ -1,0 +1,148 @@
+name: Build Windows Installer
+
+# 每次 push 到 main / master 自动构建 Windows 安装包并发布 Release。
+# 仅 Windows：代理运行时 (xray/sing-box)、NSIS、WebView2 均为 Windows-only，
+# 其它平台无法产出可用安装包。安装包不含 chrome 内核（被 gitignore，CI 拿不到），
+# 用户安装后自备内核——与项目"内核用户自备"模式一致。
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Generate Wails bindings
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path frontend/dist | Out-Null
+          'placeholder' | Out-File -FilePath frontend/dist/__wails_placeholder__.txt -Encoding utf8
+          wails generate module
+          if (Test-Path frontend/wailsjs) {
+            Copy-Item -Recurse -Force frontend/wailsjs/* frontend/src/wailsjs/
+          }
+          Remove-Item -Recurse -Force frontend/dist
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content -Encoding UTF8 wails.json | ConvertFrom-Json).info.productVersion
+          if ([string]::IsNullOrWhiteSpace($v)) { $v = '0.0.0' }
+          $full = "$v-build$($env:GITHUB_RUN_NUMBER)"
+          "version=$v"      | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "fullVersion=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=v$full"      | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $v  Tag: v$full"
+
+      - name: Wails build
+        run: wails build -platform windows/amd64 -trimpath
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'build/bin/czl-browser.exe')) {
+            throw 'Build output missing: build/bin/czl-browser.exe'
+          }
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Assemble staging (no chrome kernel)
+        shell: pwsh
+        run: |
+          $staging = 'publish/staging'
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+
+          Copy-Item 'build/bin/czl-browser.exe' "$staging/czl-browser.exe" -Force
+
+          if (Test-Path 'publish/config.init.yaml') {
+            Copy-Item 'publish/config.init.yaml' "$staging/config.yaml" -Force
+          } else {
+            throw 'Missing publish/config.init.yaml'
+          }
+
+          New-Item -ItemType Directory -Force -Path "$staging/bin" | Out-Null
+          foreach ($f in 'xray.exe','sing-box.exe') {
+            if (-not (Test-Path "bin/$f")) { throw "Missing runtime: bin/$f" }
+            Copy-Item "bin/$f" "$staging/bin/$f" -Force
+          }
+
+          New-Item -ItemType Directory -Force -Path "$staging/data" | Out-Null
+          Write-Host 'Staging assembled (chrome kernel intentionally excluded).'
+
+      - name: Build installer (NSIS)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path 'publish/output' | Out-Null
+          # installer.nsi 要求 UTF-8 with BOM（Unicode True）。
+          $nsi = (Resolve-Path 'publish/installer.nsi').Path
+          $c = [System.IO.File]::ReadAllText($nsi, [System.Text.Encoding]::UTF8)
+          [System.IO.File]::WriteAllText($nsi, $c, [System.Text.UTF8Encoding]::new($true))
+
+          $staging = (Resolve-Path 'publish/staging').Path
+          $ver = '${{ steps.version.outputs.fullVersion }}'
+          & makensis "/DVERSION=$ver" "/DSTAGINGDIR=$staging" 'publish/installer.nsi'
+          if ($LASTEXITCODE -ne 0) { throw "NSIS failed with exit $LASTEXITCODE" }
+
+          $out = "publish/output/CZLBrowser-Setup-$ver.exe"
+          if (-not (Test-Path $out)) { throw "Installer not found: $out" }
+          Write-Host "Installer: $out"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}
+          path: publish/output/CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}.exe
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: CZL Browser ${{ steps.version.outputs.fullVersion }}
+          body: |
+            自动构建产物（Windows x64，不含 Chrome 内核，需自备内核）。
+
+            - 提交: ${{ github.sha }}
+            - 分支: ${{ github.ref_name }}
+          files: publish/output/CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}.exe
+          draft: false
+          prerelease: false
