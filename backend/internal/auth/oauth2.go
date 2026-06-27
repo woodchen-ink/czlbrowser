@@ -77,13 +77,20 @@ func (m *Manager) GetAuthState() AuthState {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if m.user == nil || m.token == nil {
+	// 令牌存在即视为已登录；用户信息可能尚未补全（后台异步拉取），
+	// 此时返回空用户对象而非 null，前端按空对象渲染，待补全后再更新。
+	if m.token == nil {
 		return AuthState{LoggedIn: false}
+	}
+
+	user := m.user
+	if user == nil {
+		user = &UserInfo{}
 	}
 
 	return AuthState{
 		LoggedIn: true,
-		User:     m.user,
+		User:     user,
 		Level:    m.parseHighestLevel(),
 	}
 }
@@ -379,7 +386,10 @@ func (m *Manager) Logout() {
 	m.deleteToken()
 }
 
-// TryRestoreSession 尝试从本地文件恢复会话
+// TryRestoreSession 从本地文件同步恢复会话。
+// 仅做磁盘读取与本地有效性判断，不发起任何网络请求，确保启动阶段不阻塞、
+// 弱网 / 离线时也能立即判定登录态。令牌的刷新与用户信息更新交给 RefreshSessionAsync。
+// 返回 true 表示本地存在有效（未过期或可刷新）的会话。
 func (m *Manager) TryRestoreSession() bool {
 	log := logger.New("Auth")
 
@@ -389,31 +399,81 @@ func (m *Manager) TryRestoreSession() bool {
 
 	m.mu.RLock()
 	token := m.token
+	user := m.user
 	m.mu.RUnlock()
 
 	if token == nil {
 		return false
 	}
 
-	// 检查 token 是否过期
-	if time.Now().Unix() >= token.ExpiresAt {
-		// 尝试刷新
-		if err := m.RefreshToken(); err != nil {
-			log.Warn("刷新令牌失败，需要重新登录", logger.F("error", err))
-			m.deleteToken()
-			return false
-		}
-	}
-
-	// 获取用户信息
-	if err := m.fetchUserInfo(); err != nil {
-		log.Warn("恢复会话时获取用户信息失败", logger.F("error", err))
+	// 已过期但缺少 refresh_token：无法续期，视为会话失效。
+	if time.Now().Unix() >= token.ExpiresAt && token.RefreshToken == "" {
+		log.Warn("本地令牌已过期且无 refresh_token，需要重新登录")
 		m.deleteToken()
 		return false
 	}
 
-	log.Info("会话恢复成功", logger.F("username", m.user.Username))
+	if user != nil {
+		log.Info("会话从本地恢复", logger.F("username", user.Username))
+	} else {
+		log.Info("本地令牌已恢复，等待后台补全用户信息")
+	}
 	return true
+}
+
+// RefreshSessionAsync 在后台校验并刷新已恢复的会话：
+// 令牌临近过期时刷新，再拉取最新用户信息，最终通过 onResult 回传结果。
+// 仅当刷新被服务端明确拒绝（refresh_token 失效）时才清除本地会话；
+// 网络抖动等临时错误不删除令牌，保留下次启动重试的机会。
+func (m *Manager) RefreshSessionAsync(onResult func(LoginResult)) {
+	go func() {
+		log := logger.New("Auth")
+
+		m.mu.RLock()
+		token := m.token
+		m.mu.RUnlock()
+		if token == nil {
+			return
+		}
+
+		// 令牌已过期或剩余有效期不足 5 分钟时主动刷新。
+		needRefresh := time.Now().Unix() >= token.ExpiresAt-int64(5*time.Minute/time.Second)
+		if needRefresh && token.RefreshToken != "" {
+			if err := m.RefreshToken(); err != nil {
+				log.Warn("后台刷新令牌失败", logger.F("error", err))
+				// refresh_token 失效才登出，其余错误保留本地会话。
+				if isInvalidGrant(err) {
+					m.deleteToken()
+					if onResult != nil {
+						onResult(LoginResult{Success: false, Error: "登录已过期，请重新登录"})
+					}
+					return
+				}
+			}
+		}
+
+		if err := m.fetchUserInfo(); err != nil {
+			log.Warn("后台获取用户信息失败，沿用本地缓存", logger.F("error", err))
+			// 拉取失败不影响已恢复的本地会话；若本地也无用户信息则无可回传。
+			return
+		}
+
+		m.saveToken()
+		if onResult != nil {
+			onResult(LoginResult{Success: true, State: m.GetAuthState()})
+		}
+	}()
+}
+
+// isInvalidGrant 判断刷新错误是否为 refresh_token 失效（需重新登录）。
+func isInvalidGrant(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "invalid_grant") ||
+		strings.Contains(msg, "400") ||
+		strings.Contains(msg, "401")
 }
 
 // parseHighestLevel 解析用户最高等级

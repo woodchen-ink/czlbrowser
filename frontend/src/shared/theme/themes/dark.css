@@ -25,25 +25,30 @@
   --color-text-muted: #95a0ae;
   --color-text-inverse: #10141c;
 
-  --color-accent: #7b90bf;
-  --color-accent-hover: #93a7d2;
-  --color-accent-muted: #253042;
-  --color-accent-soft: #2b3b57;
+  /* CZL 中性风：暗色下 accent 走近白，承担链接 / 选中 / 激活着色；品牌蓝仅留给 ring / Logo */
+  --color-accent: #eef3f8;
+  --color-accent-hover: #ffffff;
+  --color-accent-muted: #202938;
+  --color-accent-soft: #283346;
   --color-primary: var(--color-accent);
 
-  --color-success: #7e9fa1;
-  --color-warning: #b39d7e;
-  --color-error: #c08998;
-  --color-info: #7b90bf;
-  --color-success-soft: #263437;
-  --color-warning-soft: #393022;
-  --color-error-soft: #372b31;
-  --color-info-soft: #2b3b57;
-  --color-chart-1: #7b90bf;
-  --color-chart-2: #a5b4d8;
-  --color-chart-3: #7e9fa1;
-  --color-chart-4: #b39d7e;
-  --color-chart-5: #9d8ea8;
+  /* 品牌色：暗色下提亮一档 */
+  --color-brand: #4fb8e8;
+
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-info: #94a3b8;
+  --color-success-soft: #14271b;
+  --color-warning-soft: #2c2410;
+  --color-error-soft: #2c1719;
+  --color-info-soft: #1c2533;
+  --color-chart-1: #659cfe;
+  --color-chart-2: #73c660;
+  --color-chart-3: #ffa458;
+  --color-chart-4: #917eed;
+  --color-chart-5: #f9738d;
+  --color-chart-6: #fcc85f;
   --color-overlay: rgb(0 0 0 / 0.55);
   --color-overlay-soft: rgb(0 0 0 / 0.3);
   --color-preview-line: rgb(255 255 255 / 0.14);
@@ -54,13 +59,13 @@
   --color-button-primary-active: #cdd4dc;
   --color-button-primary-disabled: #253042;
   --color-button-primary-disabled-foreground: #708095;
-  --color-ring: #7b90bf;
+  --color-ring: #4fb8e8;
   --color-preview-light-bg: #f6f7f8;
   --color-preview-light-sidebar: #fbfcfd;
-  --color-preview-light-accent: #1b2152;
+  --color-preview-light-accent: #181d22;
   --color-preview-dark-bg: #10141c;
   --color-preview-dark-sidebar: #171c25;
-  --color-preview-dark-accent: #7b90bf;
+  --color-preview-dark-accent: #eef3f8;
 
   --color-surface-elevated: var(--color-bg-elevated);
 

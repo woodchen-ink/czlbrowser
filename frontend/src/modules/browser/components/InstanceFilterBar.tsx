@@ -9,7 +9,7 @@ export interface InstanceFilters {
   status: '' | 'running' | 'stopped'
   proxyId: string
   coreId: string
-  tags: Set<string>
+  tags: string   // 单选标签，'' = 全部
   kwSearch: string
   groupId: string   // '' = 全部, '__ungrouped__' = 未分组, 其他 = 具体分组ID
 }
@@ -19,13 +19,13 @@ export const EMPTY_FILTERS: InstanceFilters = {
   status: '',
   proxyId: '',
   coreId: '',
-  tags: new Set(),
+  tags: '',
   kwSearch: '',
   groupId: '',
 }
 
 export function isFiltersEmpty(f: InstanceFilters) {
-  return !f.keyword && !f.status && !f.proxyId && !f.coreId && f.tags.size === 0 && !f.kwSearch && !f.groupId
+  return !f.keyword && !f.status && !f.proxyId && !f.coreId && !f.tags && !f.kwSearch && !f.groupId
 }
 
 interface Props {
@@ -44,7 +44,7 @@ export function InstanceFilterBar({ filters, onChange, proxies, cores, allTags, 
     onChange({ ...filters, [key]: value })
 
   const hasFilter = !isFiltersEmpty(filters)
-  const activeCount = [filters.keyword, filters.status, filters.proxyId, filters.coreId, filters.kwSearch, filters.groupId].filter(Boolean).length + filters.tags.size
+  const activeCount = [filters.keyword, filters.status, filters.proxyId, filters.coreId, filters.kwSearch, filters.groupId, filters.tags].filter(Boolean).length
 
   return (
     <div className="space-y-2">
@@ -56,7 +56,7 @@ export function InstanceFilterBar({ filters, onChange, proxies, cores, allTags, 
         <Filter className="w-3.5 h-3.5" />
         <span>筛选</span>
         {collapsed && activeCount > 0 && (
-          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-accent)]/10 text-[var(--color-accent)] rounded-full">
+          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] rounded-full">
             {activeCount}
           </span>
         )}
@@ -118,7 +118,7 @@ export function InstanceFilterBar({ filters, onChange, proxies, cores, allTags, 
             />
             {hasFilter && (
               <button
-                onClick={() => onChange({ ...EMPTY_FILTERS, tags: new Set() })}
+                onClick={() => onChange(EMPTY_FILTERS)}
                 className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-bg-muted)] rounded transition-colors"
               >
                 <X className="w-3.5 h-3.5" />

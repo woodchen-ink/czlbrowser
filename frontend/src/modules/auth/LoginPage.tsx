@@ -36,10 +36,9 @@ export function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[var(--color-bg-base)] px-6 py-10">
-      <div className="absolute inset-x-0 top-0 h-72 bg-[linear-gradient(135deg,var(--color-brand-gradient-start),var(--color-brand-gradient-end))] opacity-[0.06]" />
       <div className="relative w-full max-w-md rounded-[28px] border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-6 shadow-[var(--shadow-lg)] sm:p-8">
         <div className="flex flex-col items-center space-y-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-accent)] shadow-[var(--shadow-sm)]">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg-muted)] shadow-[var(--shadow-sm)]">
             <img
               src={logoImage}
               alt="CZL Browser"

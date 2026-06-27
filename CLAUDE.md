@@ -110,7 +110,7 @@ frontend/src/
 - **Proxy runtime**: `bin/xray.exe` and `bin/sing-box.exe` shipped in-repo. No external downloads needed.
 - **Chrome kernels**: User-provided, placed in `chrome/` directory. Managed through the UI's core management page.
 - **Timezone spoofing**: Browser launch strips the stored `--timezone` flag before starting Chromium, then applies timezone override through browser-level CDP auto-attach so existing and newly opened page targets stay aligned with the proxy exit locale (or manual timezone fallback).
-- **Auth**: OAuth2 via CZL Connect (`connect.czl.net`). Tokens stored in `data/auth_token.json`. App requires login to use. User level (groups field: t0-t5, viewer, admin) displayed in Topbar. Auth state managed by `authStore` (Zustand).
+- **Auth**: OAuth2 via CZL Connect (`connect.czl.net`). Encrypted token + user info persisted to `data/auth_token.json` (`storedSession` envelope; legacy token-only files auto-migrated). On startup `TryRestoreSession` restores synchronously from disk (no network) so login survives restart and tolerates offline/weak network; `RefreshSessionAsync` then refreshes the token and re-fetches user info in the background, emitting `auth:restored` / `auth:session:expired` to the frontend. A token is only cleared on definitive refresh failure (`invalid_grant`), not on transient userinfo errors. App requires login to use. User level (groups field: t0-t5, viewer, admin) displayed in Topbar. Auth state managed by `authStore` (Zustand).
 - **Profile quota**: Instance create/copy flows are not blocked by `MaxProfileLimit`; quota values are informational only.
 - **Quota UI**: Dashboard and Browser List no longer expose redeem/expand quota entry points.
 
@@ -118,7 +118,7 @@ frontend/src/
 
 - **Language**: All UI text, log messages, and comments are in Chinese
 - **Go module**: `czl-browser` (not `czl-browser`)
-- **CSS**: Tailwind CSS with CSS variables defined in the theme (no hardcoded Tailwind colors)
+- **CSS**: Tailwind CSS with CSS variables defined in the theme (no hardcoded Tailwind colors). CZL neutral palette: black/white/gray dominant; `--color-accent` is **near-black** (drives links/selection/active/icon coloring), brand blue `--color-brand` (`#2EA7E0`) only appears in the focus ring (`--color-ring`) and the Logo — never as link/button/selection color. No gradients in UI. Charts use `--color-chart-1`..`6`.
 - **State management**: Zustand (lightweight stores in `src/store/`)
 - **Icons**: Lucide React only (no emoji in UI)
 - **Frontend routing**: React Router v6, routes defined in `App.tsx`

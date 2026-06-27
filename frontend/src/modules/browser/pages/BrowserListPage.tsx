@@ -145,7 +145,9 @@ export function BrowserListPage() {
       const saved = localStorage.getItem('browser:filters')
       if (saved) {
         const parsed = JSON.parse(saved)
-        return { ...EMPTY_FILTERS, ...parsed, tags: new Set(parsed.tags || []) }
+        // 兼容历史多选格式（数组 / Set 序列化结果），取首个标签作为单选值
+        const tags = Array.isArray(parsed.tags) ? (parsed.tags[0] ?? '') : (parsed.tags || '')
+        return { ...EMPTY_FILTERS, ...parsed, tags }
       }
     } catch { /* ignore */ }
     return EMPTY_FILTERS
@@ -156,8 +158,7 @@ export function BrowserListPage() {
 
   // 持久化筛选状态
   useEffect(() => {
-    const serializable = { ...filters, tags: Array.from(filters.tags) }
-    localStorage.setItem('browser:filters', JSON.stringify(serializable))
+    localStorage.setItem('browser:filters', JSON.stringify(filters))
   }, [filters])
 
   useEffect(() => {
@@ -281,7 +282,7 @@ export function BrowserListPage() {
       if (filters.proxyId === '__none__' && (p.proxyId || p.proxyConfig)) return false
       if (filters.proxyId && filters.proxyId !== '__none__' && p.proxyId !== filters.proxyId) return false
       if (filters.coreId && p.coreId !== filters.coreId) return false
-      if (filters.tags.size > 0 && !p.tags?.some(t => filters.tags.has(t))) return false
+      if (filters.tags && !p.tags?.includes(filters.tags)) return false
       if (filters.kwSearch) {
         const q = filters.kwSearch.toLowerCase()
         const hit = p.keywords?.some(v => v.toLowerCase().includes(q))

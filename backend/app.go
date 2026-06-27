@@ -109,6 +109,17 @@ func (a *App) startup(ctx context.Context) {
 	a.authMgr = auth.NewManager(a.appRoot)
 	if a.authMgr.TryRestoreSession() {
 		log.Info("OAuth2 会话已恢复")
+		// 后台校验 / 刷新令牌并补全用户信息，完成后通知前端更新认证状态。
+		a.authMgr.RefreshSessionAsync(func(result auth.LoginResult) {
+			if a.ctx == nil {
+				return
+			}
+			if result.Success {
+				runtime.EventsEmit(a.ctx, "auth:restored", result.State)
+			} else {
+				runtime.EventsEmit(a.ctx, "auth:session:expired", result.Error)
+			}
+		})
 	}
 
 	a.ensureDefaultCores()

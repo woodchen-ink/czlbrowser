@@ -28,9 +28,6 @@ body {
   min-height: 100vh;
   font-family: "CZL",'Segoe UI Variable', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background-color: var(--color-bg-base);
-  background-image:
-    radial-gradient(circle at top, var(--color-accent-muted) 0%, transparent 45%),
-    linear-gradient(180deg, var(--color-bg-subtle) 0%, var(--color-bg-base) 100%);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

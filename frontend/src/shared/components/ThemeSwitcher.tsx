@@ -82,12 +82,7 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
               </div>
 
               {isActive && (
-                <div
-                  className="absolute inset-x-4 bottom-0 h-px"
-                  style={{
-                    backgroundImage: 'linear-gradient(90deg, var(--color-brand-gradient-start), var(--color-brand-gradient-end))',
-                  }}
-                />
+                <div className="absolute inset-x-4 bottom-0 h-px bg-[var(--color-accent)]" />
               )}
             </button>
           )

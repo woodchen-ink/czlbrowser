@@ -89,9 +89,21 @@ function useAuthEvents() {
       useAuthStore.setState({ loginPending: false, loginError: errMsg })
     })
 
+    // 启动时后台恢复会话完成：刷新令牌成功并补全用户信息后更新状态
+    const offRestored = runtime.EventsOn('auth:restored', (state: any) => {
+      setAuthState(state)
+    })
+
+    // 会话确已失效（refresh_token 过期）：清除登录态回到登录页
+    const offExpired = runtime.EventsOn('auth:session:expired', () => {
+      useAuthStore.setState({ state: { loggedIn: false, level: '' } })
+    })
+
     return () => {
       offSuccess?.()
       offError?.()
+      offRestored?.()
+      offExpired?.()
     }
   }, [setAuthState])
 }

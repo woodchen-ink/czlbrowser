@@ -24,45 +24,50 @@
   --color-text-muted: #7d8794;
   --color-text-inverse: #ffffff;
 
-  --color-accent: #1b2152;
-  --color-accent-hover: #242d67;
-  --color-accent-muted: #dfe6ef;
-  --color-accent-soft: #d9e1ec;
+  /* CZL 中性风：accent 承担链接 / 选中 / 激活 / 图标着色，统一走近黑而非品牌蓝。
+     品牌蓝 --color-brand 仅用于 focus 光晕 (--color-ring) 与 Logo，全站极少出现。 */
+  --color-accent: #181d22;
+  --color-accent-hover: #000000;
+  --color-accent-muted: #e7ecf2;
+  --color-accent-soft: #eef1f5;
   --color-primary: var(--color-accent);
 
-  --color-success: #5e7e80;
-  --color-warning: #8e7a5f;
-  --color-error: #9d6877;
-  --color-info: #4b669a;
-  --color-success-soft: #e5ecec;
-  --color-warning-soft: #ece6dc;
-  --color-error-soft: #efe5e8;
-  --color-info-soft: #d9e6f5;
-  --color-chart-1: #1b2152;
-  --color-chart-2: #4b669a;
-  --color-chart-3: #5e7e80;
-  --color-chart-4: #8e7a5f;
-  --color-chart-5: #756b80;
+  /* 品牌色：仅 focus ring / Logo 使用 */
+  --color-brand: #2ea7e0;
+
+  --color-success: #2f8a4e;
+  --color-warning: #b97914;
+  --color-error: #c2384a;
+  --color-info: #4b5b75;
+  --color-success-soft: #e4f1e9;
+  --color-warning-soft: #f6ecda;
+  --color-error-soft: #f6e4e7;
+  --color-info-soft: #e7ebf2;
+  /* 数据可视化配色：CZL 统一 OKLCH 调色板，避开品牌青蓝色相 */
+  --color-chart-1: #3975e0;
+  --color-chart-2: #4caf33;
+  --color-chart-3: #f58d31;
+  --color-chart-4: #7256d4;
+  --color-chart-5: #e3496f;
+  --color-chart-6: #ecb333;
   --color-overlay: rgb(16 20 28 / 0.5);
   --color-overlay-soft: rgb(16 20 28 / 0.2);
   --color-preview-line: rgb(0 0 0 / 0.1);
 
-  --color-button-primary: #000000;
+  --color-button-primary: #181d22;
   --color-button-primary-foreground: #ffffff;
-  --color-button-primary-hover: #181d22;
+  --color-button-primary-hover: #000000;
   --color-button-primary-active: #101317;
   --color-button-primary-disabled: #a7b0bb;
   --color-button-primary-disabled-foreground: #ffffff;
-  --color-ring: #4b669a;
+  --color-ring: #2ea7e0;
 
-  --color-brand-gradient-start: #1d2088;
-  --color-brand-gradient-end: #2ea7e0;
   --color-preview-light-bg: #f6f7f8;
   --color-preview-light-sidebar: #fbfcfd;
-  --color-preview-light-accent: #1b2152;
+  --color-preview-light-accent: #181d22;
   --color-preview-dark-bg: #10141c;
   --color-preview-dark-sidebar: #171c25;
-  --color-preview-dark-accent: #7b90bf;
+  --color-preview-dark-accent: #eef3f8;
   --color-surface-elevated: var(--color-bg-elevated);
 
   --shadow-sm: 0 1px 2px rgb(16 20 28 / 0.06);
