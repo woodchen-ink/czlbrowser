@@ -61,16 +61,17 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $v = (Get-Content -Encoding UTF8 wails.json | ConvertFrom-Json).info.productVersion
-          if ([string]::IsNullOrWhiteSpace($v)) { $v = '0.0.0' }
-          $full = "$v-build$($env:GITHUB_RUN_NUMBER)"
-          # tag 与 asset 文件名固定不变，alist 代理出的下载链接保持稳定；
-          # fullVersion 仅用于 Release 标题/正文与安装包内部元数据展示。
-          "version=$v"        | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # 日期按 UTC+8（东八区）计算，与本地一致，避免 runner UTC 差一天。
+          $date = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow, 'China Standard Time')
+          $datePart = $date.ToString('yyyy.MM.dd')
+          # tag = 日期 + run_number，保证同一天多次构建不撞 tag，每次产生新历史 Release。
+          $full = "$datePart.$($env:GITHUB_RUN_NUMBER)"
+          $tag = "v$full"
+          # asset 文件名固定，无论走日期 tag 还是 latest，下载文件名都一致。
           "fullVersion=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "tag=latest"        | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tag"          | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "assetName=CZLBrowser-Setup.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "Version: $full  Tag: latest  Asset: CZLBrowser-Setup.exe"
+          Write-Host "Version: $full  Tag: $tag  Asset: CZLBrowser-Setup.exe"
 
       - name: Wails build
         run: wails build -platform windows/amd64 -trimpath
