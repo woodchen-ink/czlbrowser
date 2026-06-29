@@ -60,12 +60,21 @@ var chromiumDefaultCacheSubPaths = [][2]string{
 	{"Network", "Cache"},
 }
 
-// chromiumExtensionBlocklist 是导入/导出时跳过的可重建或外部联动扩展本体。
-var chromiumExtensionBlocklist = map[string]struct{}{
-	"efaidnbmnnnibpcajpcglclefindmkaj": {}, // Adobe Acrobat
-	"ghbmnnjooekpmoecnnnilnnbdlolhkhi": {}, // Google Docs Offline
-	"ngpampappnmepgilojfohadhhmbhlaek": {}, // IDM Integration Module
-	"nmmhkkegccagdldgiimedpiccmgmieda": {}, // Chrome Web Store Payments
+// chromiumBlockedExtensionNames 是导入/导出时跳过的可重建或外部联动扩展本体。
+var chromiumBlockedExtensionNames = map[string]string{
+	"efaidnbmnnnibpcajpcglclefindmkaj": "Adobe Acrobat",
+	"ghbmnnjooekpmoecnnnilnnbdlolhkhi": "Google Docs Offline",
+	"ngpampappnmepgilojfohadhhmbhlaek": "IDM Integration Module",
+	"nmmhkkegccagdldgiimedpiccmgmieda": "Chrome Web Store Payments",
+}
+
+// BlockedChromeExtensionNames 返回需跳过的 Chromium 扩展本体 ID 与名称。
+func BlockedChromeExtensionNames() map[string]string {
+	result := make(map[string]string, len(chromiumBlockedExtensionNames))
+	for id, name := range chromiumBlockedExtensionNames {
+		result[id] = name
+	}
+	return result
 }
 
 // profileRootMarkers 是判定某目录为 profile 根的标志性直接子项。
@@ -190,7 +199,7 @@ func isBlockedExtensionPath(segs []string) bool {
 			continue
 		}
 		extensionID := strings.ToLower(strings.TrimSpace(segs[i+1]))
-		if _, ok := chromiumExtensionBlocklist[extensionID]; ok {
+		if _, ok := chromiumBlockedExtensionNames[extensionID]; ok {
 			return true
 		}
 	}

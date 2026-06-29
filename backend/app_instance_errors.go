@@ -17,6 +17,7 @@ var errBrowserProcessExitedBeforeReady = errors.New("browser process exited befo
 func waitBrowserDebugPortReady(debugPort int, cmd *exec.Cmd, timeout time.Duration) error {
 	address := fmt.Sprintf("127.0.0.1:%d", debugPort)
 	deadline := time.Now().Add(timeout)
+	processExited := false
 
 	for time.Now().Before(deadline) {
 		conn, err := net.DialTimeout("tcp", address, 250*time.Millisecond)
@@ -26,11 +27,17 @@ func waitBrowserDebugPortReady(debugPort int, cmd *exec.Cmd, timeout time.Durati
 		}
 
 		if browserProcessExited(cmd) {
-			return errBrowserProcessExitedBeforeReady
+			if stdruntime.GOOS != "windows" {
+				return errBrowserProcessExitedBeforeReady
+			}
+			processExited = true
 		}
 		time.Sleep(150 * time.Millisecond)
 	}
 
+	if processExited {
+		return errBrowserProcessExitedBeforeReady
+	}
 	return fmt.Errorf("浏览器进程未在 %s 内完成启动，调试端口 %d 未就绪", timeout.Round(time.Second), debugPort)
 }
 

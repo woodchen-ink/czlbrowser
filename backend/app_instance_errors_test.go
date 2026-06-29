@@ -2,6 +2,9 @@ package backend
 
 import (
 	"fmt"
+	"net"
+	"os/exec"
+	stdruntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -45,4 +48,42 @@ func TestDescribeBrowserReadyTimeout(t *testing.T) {
 	if !strings.Contains(got, "调试端口 9222 未开启") {
 		t.Fatalf("unexpected timeout message: %q", got)
 	}
+}
+
+func TestWaitBrowserDebugPortReadyWindowsAllowsLauncherExit(t *testing.T) {
+	if stdruntime.GOOS != "windows" {
+		t.Skip("Windows launcher handoff behavior only applies on Windows")
+	}
+	port, err := nextAvailablePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("cmd", "/C", "exit", "0")
+	hideWindow(cmd)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait()
+
+	ready := make(chan struct{})
+	go func() {
+		time.Sleep(250 * time.Millisecond)
+		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+		if err != nil {
+			close(ready)
+			return
+		}
+		defer ln.Close()
+		close(ready)
+		conn, err := ln.Accept()
+		if err == nil {
+			_ = conn.Close()
+		}
+	}()
+
+	if err := waitBrowserDebugPortReady(port, cmd, 2*time.Second); err != nil {
+		t.Fatalf("wait should continue after launcher exit on Windows: %v", err)
+	}
+	<-ready
 }
