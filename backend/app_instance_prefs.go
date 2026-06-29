@@ -62,3 +62,18 @@ func patchChromePreferencesForCleanStart(userDataDir string, log *logger.Logger,
 			logger.F("profile_id", profileId), logger.F("error", err.Error()))
 	}
 }
+
+// cleanupChromeSingletonLocks 清理用户数据目录下的 Singleton 锁文件。
+// Chromium 用 SingletonLock/SingletonCookie/SingletonSocket 防止同一 profile 被多进程打开，
+// 这些文件（Windows 下为指向"主机名-PID"的特殊符号链接）在跨机器导入备份后会指向失效的旧主机，
+// 导致 Chromium 误判"已有实例运行"或锁状态异常而启动后立即退出。
+// 本实例由本程序独占管理，启动前残留的 Singleton 必为陈旧锁，直接清理即可。
+func cleanupChromeSingletonLocks(userDataDir string, log *logger.Logger, profileId string) {
+	for _, name := range []string{"SingletonLock", "SingletonCookie", "SingletonSocket"} {
+		p := filepath.Join(userDataDir, name)
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			log.Warn("清理 Singleton 锁失败",
+				logger.F("profile_id", profileId), logger.F("file", name), logger.F("error", err.Error()))
+		}
+	}
+}

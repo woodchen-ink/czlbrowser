@@ -64,6 +64,11 @@ func ConfigPath() string {
 	return appconfig.ConfigPath()
 }
 
+// DataDir 返回生产环境用户可写数据根目录 (%LOCALAPPDATA%\CZL Browser)。
+func DataDir() string {
+	return appconfig.DataDir()
+}
+
 func RunTray(cb TrayCallbacks) {
 	apptray.Run(cb)
 }

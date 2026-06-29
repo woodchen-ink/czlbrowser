@@ -12,15 +12,17 @@ import (
 // ClashManager Clash 进程管理器
 type ClashManager struct {
 	Config    *config.Config
-	AppRoot   string // 应用根目录，所有相对路径基于此解析
+	AppRoot   string // 应用安装根目录，仅用于定位只读资源
+	DataRoot  string // 用户可写数据根目录
 	Processes map[string]*exec.Cmd
 }
 
 // NewClashManager 创建 Clash 管理器
-func NewClashManager(cfg *config.Config, appRoot string) *ClashManager {
+func NewClashManager(cfg *config.Config, appRoot string, dataRoot string) *ClashManager {
 	return &ClashManager{
 		Config:    cfg,
 		AppRoot:   appRoot,
+		DataRoot:  dataRoot,
 		Processes: make(map[string]*exec.Cmd),
 	}
 }

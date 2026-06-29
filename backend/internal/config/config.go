@@ -182,6 +182,19 @@ func ConfigPath() string {
 	return filepath.Join(ConfigDir(), "config.yaml")
 }
 
+// DataDir 返回用户可写数据根目录 (%LOCALAPPDATA%\CZL Browser)。
+// 生产环境下浏览器用户数据 / 内核 / 数据库 / 日志均落在此目录，
+// 避免写入受 UAC 保护的安装目录（如 C:\Program Files）导致 Chromium 沙箱启动失败。
+// 选用 LOCALAPPDATA 而非漫游 APPDATA：浏览器用户数据体量大且本机绑定，不应参与漫游同步。
+func DataDir() string {
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData == "" {
+		// 兜底：UserConfigDir 指向漫游 APPDATA，仍可用但非首选
+		localAppData, _ = os.UserConfigDir()
+	}
+	return filepath.Join(localAppData, "CZL Browser")
+}
+
 // LoadFromEmbedded 从编译时嵌入的默认配置加载。
 func LoadFromEmbedded() (*Config, error) {
 	var config Config

@@ -3,6 +3,6 @@
 
 package backend
 
-func killResidualRuntimeProcesses(appRoot string) error {
+func killResidualRuntimeProcesses(appRoot string, dataRoot string) error {
 	return nil
 }

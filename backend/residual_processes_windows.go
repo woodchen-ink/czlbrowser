@@ -13,20 +13,38 @@ import (
 	"time"
 )
 
-func killResidualRuntimeProcesses(appRoot string) error {
+func killResidualRuntimeProcesses(appRoot string, dataRoot string) error {
 	appRoot = strings.TrimSpace(appRoot)
-	if appRoot == "" {
+	dataRoot = strings.TrimSpace(dataRoot)
+	if appRoot == "" && dataRoot == "" {
 		return nil
 	}
+	// 只读资源（bin/xray.exe 等）在安装目录 appRoot；chrome 内核已迁至可写数据目录 dataRoot。
+	// 两个根都需扫描，避免迁移后漏杀运行在 dataRoot\chrome 下的内核进程。
 	if _, err := os.Stat(appRoot); err != nil {
+		appRoot = ""
+	}
+	if _, err := os.Stat(dataRoot); err != nil {
+		dataRoot = ""
+	}
+	if appRoot == "" && dataRoot == "" {
 		return nil
 	}
 
 	exePath, _ := os.Executable()
-	psScript := `param([string]$Root, [string]$ExcludePath)
+	psScript := `param([string]$AppRoot, [string]$DataRoot, [string]$ExcludePath)
 $ErrorActionPreference = 'SilentlyContinue'
-if ([string]::IsNullOrWhiteSpace($Root) -or -not (Test-Path -LiteralPath $Root)) { exit 0 }
-$root = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
+$prefixes = @()
+if (-not [string]::IsNullOrWhiteSpace($AppRoot) -and (Test-Path -LiteralPath $AppRoot)) {
+  $appRootFull = [System.IO.Path]::GetFullPath($AppRoot).TrimEnd('\') + '\'
+  $prefixes += ($appRootFull + 'bin\')
+}
+if (-not [string]::IsNullOrWhiteSpace($DataRoot) -and (Test-Path -LiteralPath $DataRoot)) {
+  $dataRootFull = [System.IO.Path]::GetFullPath($DataRoot).TrimEnd('\') + '\'
+  $prefixes += ($dataRootFull + 'chrome\')
+  $prefixes += ($dataRootFull + 'bin\')
+}
+if ($prefixes.Count -eq 0) { exit 0 }
 $exclude = ''
 if (-not [string]::IsNullOrWhiteSpace($ExcludePath)) {
   $exclude = [System.IO.Path]::GetFullPath($ExcludePath)
@@ -34,12 +52,12 @@ if (-not [string]::IsNullOrWhiteSpace($ExcludePath)) {
 function Get-AntChromeResidualProcesses {
   @(
     Get-CimInstance Win32_Process | Where-Object {
-      $_.ExecutablePath -and (
-        $_.ExecutablePath.StartsWith(($root + 'bin\'), [System.StringComparison]::OrdinalIgnoreCase) -or
-        $_.ExecutablePath.StartsWith(($root + 'chrome\'), [System.StringComparison]::OrdinalIgnoreCase)
+      $proc = $_
+      $proc.ExecutablePath -and (
+        @($prefixes | Where-Object { $proc.ExecutablePath.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
       ) -and (
         $exclude -eq '' -or
-        -not $_.ExecutablePath.Equals($exclude, [System.StringComparison]::OrdinalIgnoreCase)
+        -not $proc.ExecutablePath.Equals($exclude, [System.StringComparison]::OrdinalIgnoreCase)
       )
     }
   )
@@ -86,7 +104,7 @@ exit 0
 		}
 	}
 
-	cmd := exec.CommandContext(ctx, powershellPath, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", filepath.Clean(scriptPath), "-Root", appRoot, "-ExcludePath", exePath)
+	cmd := exec.CommandContext(ctx, powershellPath, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", filepath.Clean(scriptPath), "-AppRoot", appRoot, "-DataRoot", dataRoot, "-ExcludePath", exePath)
 	hideWindow(cmd)
 
 	output, err := cmd.CombinedOutput()

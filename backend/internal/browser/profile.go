@@ -129,7 +129,7 @@ func (m *Manager) SaveProfiles() error {
 		})
 	}
 	m.Config.Browser.Profiles = profiles
-	if err := m.Config.Save(m.ResolveRelativePath("config.yaml")); err != nil {
+	if err := m.Config.Save(m.configSavePath()); err != nil {
 		log.Error("浏览器配置持久化失败", logger.F("error", err))
 		return err
 	}

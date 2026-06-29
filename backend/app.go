@@ -35,7 +35,8 @@ type App struct {
 	singboxMgr     *proxy.SingBoxManager
 	speedScheduler *browser.ProxySpeedScheduler
 	authMgr        *auth.Manager
-	appRoot        string
+	appRoot        string // 应用安装根目录（exe 目录），仅用于定位随包分发的只读资源（bin/xray.exe 等）
+	dataRoot       string // 用户可写数据根目录（dev: 项目根；生产: %LOCALAPPDATA%/CZL Browser），承载 data/chrome/db/logs
 	configPath     string // 配置文件路径（dev: appRoot/config.yaml, 生产: %APPDATA%/CZL Browser/config.yaml）
 	devMode        bool   // 是否为开发模式
 
@@ -49,26 +50,34 @@ type App struct {
 
 // NewApp 创建新的应用实例
 func NewApp(appRoot string) *App {
+	root := strings.TrimSpace(appRoot)
 	return &App{
-		appRoot:        strings.TrimSpace(appRoot),
+		appRoot:        root,
+		dataRoot:       root, // 默认与 appRoot 相同（dev）；生产模式在 SetDevMode 中重定向到 %LOCALAPPDATA%
 		xrayBridgeRefs: make(map[string]string),
 	}
 }
 
-// SetDevMode 设置开发模式标志，影响配置文件路径选择。
+// SetDevMode 设置开发模式标志，影响配置文件与数据根目录的路径选择。
+// dev: 配置与数据均落在项目根（appRoot）。
+// 生产: 配置走 %APPDATA%，可写数据（data/chrome/db/logs）走 %LOCALAPPDATA%，
+// 避免写入受 UAC 保护的安装目录导致 Chromium 沙箱启动失败。
 func (a *App) SetDevMode(dev bool) {
 	a.devMode = dev
 	if dev {
 		a.configPath = a.resolveAppPath("config.yaml")
+		a.dataRoot = a.appRoot
 	} else {
 		a.configPath = config.ConfigPath()
+		a.dataRoot = config.DataDir()
 	}
 }
 
 // startup 应用启动时调用
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	cfg, err := LoadConfig(a.resolveAppPath("config.yaml"))
+	// 配置读自 mainConfigPath（生产=%APPDATA%，dev=项目根）；数据目录与 config 分离。
+	cfg, err := LoadConfig(a.mainConfigPath())
 	if err != nil {
 		cfg = config.DefaultConfig()
 	}
@@ -106,7 +115,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// 初始化 OAuth2 认证管理器
-	a.authMgr = auth.NewManager(a.appRoot)
+	a.authMgr = auth.NewManager(a.dataRoot)
 	if a.authMgr.TryRestoreSession() {
 		log.Info("OAuth2 会话已恢复")
 		// 后台校验 / 刷新令牌并补全用户信息，完成后通知前端更新认证状态。
@@ -145,10 +154,10 @@ func (a *App) startup(ctx context.Context) {
 		log.Error("数据库迁移失败", logger.F("error", err))
 	}
 
-	a.browserMgr = browser.NewManager(cfg, a.appRoot)
-	a.xrayMgr = proxy.NewXrayManager(cfg, a.appRoot)
-	a.clashMgr = proxy.NewClashManager(cfg, a.appRoot)
-	a.singboxMgr = proxy.NewSingBoxManager(cfg, a.appRoot)
+	a.browserMgr = browser.NewManager(cfg, a.dataRoot, a.mainConfigPath())
+	a.xrayMgr = proxy.NewXrayManager(cfg, a.appRoot, a.dataRoot)
+	a.clashMgr = proxy.NewClashManager(cfg, a.appRoot, a.dataRoot)
+	a.singboxMgr = proxy.NewSingBoxManager(cfg, a.appRoot, a.dataRoot)
 
 	// 注入 DAO（必须在 InitData 之前）
 	conn := db.GetConn()
@@ -193,7 +202,7 @@ func (a *App) startup(ctx context.Context) {
 // ReloadConfig 开放给前端重新读取配置，用于应对手动修补后的配置重载
 func (a *App) ReloadConfig() error {
 	log := logger.New("App")
-	cfg, err := LoadConfig(a.resolveAppPath("config.yaml"))
+	cfg, err := LoadConfig(a.mainConfigPath())
 	if err != nil {
 		log.Error("重载配置文件失败", logger.F("error", err))
 		return fmt.Errorf("重载配置文件失败: %w", err)
@@ -445,7 +454,7 @@ func (a *App) SaveBrowserSettings(settings BrowserSettings) error {
 	a.config.Browser.DefaultFingerprintArgs = append([]string{}, settings.DefaultFingerprintArgs...)
 	a.config.Browser.DefaultLaunchArgs = append([]string{}, settings.DefaultLaunchArgs...)
 	a.config.Browser.DefaultProxy = strings.TrimSpace(settings.DefaultProxy)
-	if err := a.config.Save(a.resolveAppPath("config.yaml")); err != nil {
+	if err := a.config.Save(a.mainConfigPath()); err != nil {
 		log.Error("浏览器配置保存失败", logger.F("error", err))
 		return err
 	}

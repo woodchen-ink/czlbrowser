@@ -63,7 +63,7 @@ func (a *App) BackupExportPackage() (map[string]interface{}, error) {
 	savePath = backupEnsureZipSuffix(savePath)
 	a.backupEmitExportProgress("preparing", 8, "正在收集导出范围...")
 
-	scope, err := backup.BuildScope(backup.BuildOptions{AppRoot: a.appRoot, Config: a.config})
+	scope, err := backup.BuildScope(backup.BuildOptions{DataRoot: a.dataRoot, ConfigPath: a.mainConfigPath(), Config: a.config})
 	if err != nil {
 		a.backupEmitExportProgress("error", 100, fmt.Sprintf("导出失败: %v", err))
 		return nil, err
@@ -226,7 +226,7 @@ func (a *App) backupInitializeLocked(applyReload bool) (map[string]interface{}, 
 		backupNormalizePath(activeDBPath + "-shm"): {},
 	}
 
-	if err := defaultCfg.Save(a.resolveAppPath("config.yaml")); err != nil {
+	if err := defaultCfg.Save(a.mainConfigPath()); err != nil {
 		return nil, fmt.Errorf("写入默认配置失败: %w", err)
 	}
 	a.config = defaultCfg
@@ -836,7 +836,7 @@ func (a *App) backupApplyIncomingConfig(incoming *config.Config, resetFirst bool
 	target.App.MaxProfileLimit = current.App.MaxProfileLimit
 	target.App.UsedCDKeys = append([]string{}, current.App.UsedCDKeys...)
 
-	if err := target.Save(a.resolveAppPath("config.yaml")); err != nil {
+	if err := target.Save(a.mainConfigPath()); err != nil {
 		return fmt.Errorf("保存导入配置失败: %w", err)
 	}
 	a.config = target

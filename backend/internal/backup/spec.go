@@ -80,24 +80,40 @@ type ManifestEntry struct {
 }
 
 type BuildOptions struct {
+	// DataRoot 用户可写数据扫描根（data/database/logs/chrome 基于此定位）。
+	// 生产指向 %LOCALAPPDATA%/CZL Browser，dev 指向项目根。
+	DataRoot string
+	// AppRoot 兼容旧调用：DataRoot 为空时回退使用（测试与历史路径）。
 	AppRoot string
-	Config  *config.Config
+	// ConfigPath 主配置文件 config.yaml 的实际路径。
+	// 生产 config 落在 %APPDATA% 而非数据根，故单独指定；为空时回退到 DataRoot/config.yaml。
+	ConfigPath string
+	Config     *config.Config
 }
 
 // BuildScope 构建第一阶段的导出范围定义（不执行实际导出）。
 func BuildScope(opts BuildOptions) (Scope, error) {
-	appRoot := strings.TrimSpace(opts.AppRoot)
-	if appRoot == "" {
-		return Scope{}, fmt.Errorf("app root 不能为空")
+	dataRoot := strings.TrimSpace(opts.DataRoot)
+	if dataRoot == "" {
+		dataRoot = strings.TrimSpace(opts.AppRoot)
 	}
-	appRootAbs, err := filepath.Abs(appRoot)
+	if dataRoot == "" {
+		return Scope{}, fmt.Errorf("data root 不能为空")
+	}
+	appRootAbs, err := filepath.Abs(dataRoot)
 	if err != nil {
-		return Scope{}, fmt.Errorf("解析 app root 失败: %w", err)
+		return Scope{}, fmt.Errorf("解析 data root 失败: %w", err)
 	}
 
 	cfg := opts.Config
 	if cfg == nil {
 		cfg = config.DefaultConfig()
+	}
+
+	// config.yaml 在生产环境与数据根分离（位于 %APPDATA%），故优先使用显式路径。
+	configSourcePath := strings.TrimSpace(opts.ConfigPath)
+	if configSourcePath == "" {
+		configSourcePath = resolvePath(appRootAbs, "config.yaml")
 	}
 
 	builder := newScopeBuilder(appRootAbs)
@@ -107,7 +123,7 @@ func BuildScope(opts BuildOptions) (Scope, error) {
 		Category:    CategorySystemConfig,
 		EntryType:   EntryTypeFile,
 		Required:    true,
-		SourcePath:  resolvePath(appRootAbs, "config.yaml"),
+		SourcePath:  configSourcePath,
 		ArchivePath: "payload/system/config.yaml",
 		Description: "主配置文件",
 	})

@@ -129,7 +129,7 @@ func (m *Manager) RegisterDownloadedCore(coreName string, corePath string) error
 	}
 	m.Config.Browser.Cores = append(m.Config.Browser.Cores, core)
 	log.Info("下载内核已注册（文件）", logger.F("core_id", core.CoreId), logger.F("core_name", core.CoreName))
-	return m.Config.Save(m.ResolveRelativePath("config.yaml"))
+	return m.Config.Save(m.configSavePath())
 }
 
 // DeleteCore 删除内核配置
@@ -166,7 +166,7 @@ func (m *Manager) DeleteCore(coreId string) error {
 		m.Config.Browser.Cores[0].IsDefault = true
 	}
 	log.Info("内核配置删除（文件）", logger.F("core_id", coreId))
-	return m.Config.Save(m.ResolveRelativePath("config.yaml"))
+	return m.Config.Save(m.configSavePath())
 }
 
 // SetDefaultCore 设置默认内核
@@ -200,7 +200,7 @@ func (m *Manager) SetDefaultCore(coreId string) error {
 		return fmt.Errorf("内核不存在: %s", coreId)
 	}
 	log.Info("设置默认内核（文件）", logger.F("core_id", coreId))
-	return m.Config.Save(m.ResolveRelativePath("config.yaml"))
+	return m.Config.Save(m.configSavePath())
 }
 
 // syncCoresFromDAO 从 DAO 同步内核列表到内存 config

@@ -34,7 +34,7 @@ func TestGetProxyConfigByIdPreferDAO(t *testing.T) {
 		{ProxyId: "pool-1", ProxyConfig: "http://127.0.0.1:9999"},
 	}
 
-	mgr := NewManager(cfg, "")
+	mgr := NewManager(cfg, "", "")
 	mgr.ProxyDAO = &proxyDAOStub{
 		list: []Proxy{
 			{ProxyId: "pool-1", ProxyConfig: "socks5://127.0.0.1:1080"},
@@ -56,7 +56,7 @@ func TestGetProxyConfigByIdFallbackToConfig(t *testing.T) {
 		{ProxyId: "pool-2", ProxyConfig: "http://127.0.0.1:7890"},
 	}
 
-	mgr := NewManager(cfg, "")
+	mgr := NewManager(cfg, "", "")
 	mgr.ProxyDAO = &proxyDAOStub{err: errors.New("dao unavailable")}
 
 	got, ok := mgr.GetProxyConfigById("pool-2")

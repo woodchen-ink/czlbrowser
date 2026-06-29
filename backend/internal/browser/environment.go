@@ -70,7 +70,7 @@ func (m *Manager) MigrateConfig() bool {
 		m.Config.Browser.DefaultCoreId = ""
 		m.Config.Browser.DefaultConnectorType = ""
 
-		if err := m.Config.Save(m.ResolveRelativePath("config.yaml")); err != nil {
+		if err := m.Config.Save(m.configSavePath()); err != nil {
 			log.Error("配置迁移保存失败", logger.F("error", err.Error()))
 			return false
 		}

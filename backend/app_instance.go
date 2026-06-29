@@ -212,6 +212,8 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		args = browser.BuildLaunchArgs(args, profile)
 	}
 
+	// 启动前清理陈旧 Singleton 锁，避免跨机器导入备份后 Chromium 误判"已有实例运行"而秒退
+	cleanupChromeSingletonLocks(userDataDir, log, profileId)
 	// 启动前修补 Preferences，清除上次可能的异常退出标记，避免 Chrome 显示"未正常关闭"恢复页面
 	patchChromePreferencesForCleanStart(userDataDir, log, profileId)
 
