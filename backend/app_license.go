@@ -77,7 +77,7 @@ func (a *App) RedeemCDKey(cdkey string) error {
 	a.config.App.MaxProfileLimit += 3
 	a.config.App.UsedCDKeys = append(a.config.App.UsedCDKeys, cdkey)
 
-	configPath := a.resolveAppPath("config.yaml")
+	configPath := a.mainConfigPath()
 	if _, _, err := reconcileConfigWithLocalLicense(configPath, a.config); err != nil {
 		return fmt.Errorf("保存本机额度状态失败: %v", err)
 	}
@@ -106,7 +106,7 @@ func (a *App) RedeemGithubStar() error {
 	a.config.App.MaxProfileLimit += 3
 	a.config.App.UsedCDKeys = append(a.config.App.UsedCDKeys, cdkey)
 
-	configPath := a.resolveAppPath("config.yaml")
+	configPath := a.mainConfigPath()
 	if _, _, err := reconcileConfigWithLocalLicense(configPath, a.config); err != nil {
 		return fmt.Errorf("保存本机额度状态失败: %v", err)
 	}

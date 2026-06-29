@@ -26,17 +26,19 @@ type SingBoxBridge struct {
 // SingBoxManager sing-box 桥接管理器
 type SingBoxManager struct {
 	Config       *config.Config
-	AppRoot      string // 应用根目录，所有相对路径基于此解析
+	AppRoot      string // 应用安装根目录，仅用于定位只读资源 bin/sing-box.exe
+	DataRoot     string // 用户可写数据根目录，桥接工作目录 data/_singbox 基于此解析
 	Bridges      map[string]*SingBoxBridge
 	OnBridgeDied func(key string, err error)
 }
 
 // NewSingBoxManager 创建 sing-box 管理器
-func NewSingBoxManager(cfg *config.Config, appRoot string) *SingBoxManager {
+func NewSingBoxManager(cfg *config.Config, appRoot string, dataRoot string) *SingBoxManager {
 	return &SingBoxManager{
-		Config:  cfg,
-		AppRoot: appRoot,
-		Bridges: make(map[string]*SingBoxBridge),
+		Config:   cfg,
+		AppRoot:  appRoot,
+		DataRoot: dataRoot,
+		Bridges:  make(map[string]*SingBoxBridge),
 	}
 }
 
@@ -271,8 +273,8 @@ func (m *SingBoxManager) resolveWorkdir(key string) string {
 		root = "data"
 	}
 	if !filepath.IsAbs(root) {
-		if m.AppRoot != "" {
-			root = filepath.Join(m.AppRoot, root)
+		if m.DataRoot != "" {
+			root = filepath.Join(m.DataRoot, root)
 		} else if exePath, err := os.Executable(); err == nil {
 			root = filepath.Join(filepath.Dir(exePath), root)
 		}

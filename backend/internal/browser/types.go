@@ -106,7 +106,8 @@ type ProfileConfig = config.BrowserProfileConfig
 // Manager 浏览器管理器
 type Manager struct {
 	Config           *config.Config
-	AppRoot          string // 应用根目录，所有相对路径基于此解析（生产=exe目录，dev=项目根目录）
+	DataRoot         string // 用户可写数据根目录，chrome 内核与用户数据相对路径基于此解析（生产=%LOCALAPPDATA%/CZL Browser，dev=项目根）
+	ConfigPath       string // 主配置文件 config.yaml 实际路径（生产=%APPDATA%，dev=项目根）；DAO 未注入时的降级保存目标
 	Profiles         map[string]*Profile
 	Mutex            sync.Mutex
 	BrowserProcesses map[string]*exec.Cmd
@@ -131,24 +132,35 @@ type XrayBridge struct {
 }
 
 // NewManager 创建浏览器管理器
-func NewManager(cfg *config.Config, appRoot string) *Manager {
+func NewManager(cfg *config.Config, dataRoot string, configPath string) *Manager {
 	return &Manager{
 		Config:           cfg,
-		AppRoot:          appRoot,
+		DataRoot:         dataRoot,
+		ConfigPath:       configPath,
 		Profiles:         make(map[string]*Profile),
 		BrowserProcesses: make(map[string]*exec.Cmd),
 		XrayBridges:      make(map[string]*XrayBridge),
 	}
 }
 
-// ResolveRelativePath 将相对路径解析为绝对路径（基于 AppRoot）。
+// configSavePath 返回主配置保存路径：优先显式 ConfigPath，
+// 兜底回退到 DataRoot/config.yaml（兼容未注入 ConfigPath 的旧调用与测试）。
+func (m *Manager) configSavePath() string {
+	if p := filepath.Clean(m.ConfigPath); m.ConfigPath != "" {
+		return p
+	}
+	return m.ResolveRelativePath("config.yaml")
+}
+
+// ResolveRelativePath 将相对路径解析为绝对路径（基于 DataRoot）。
+// chrome 内核目录与用户数据目录均为可写数据，经此解析到 %LOCALAPPDATA%（生产）。
 // 如果传入的已经是绝对路径则直接返回。
 func (m *Manager) ResolveRelativePath(p string) string {
 	if filepath.IsAbs(p) {
 		return p
 	}
-	if m.AppRoot != "" {
-		return filepath.Join(m.AppRoot, p)
+	if m.DataRoot != "" {
+		return filepath.Join(m.DataRoot, p)
 	}
 	// 兜底：使用 CWD
 	if cwd, err := os.Getwd(); err == nil {

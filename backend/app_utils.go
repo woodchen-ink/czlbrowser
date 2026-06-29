@@ -17,11 +17,17 @@ import (
 // 工具函数
 // ============================================================================
 
-// resolveAppPath 将相对路径解析为绝对路径（基于 appRoot）。
+// resolveAppPath 将相对路径解析为可写数据绝对路径（基于 dataRoot）。
+// data/chrome/db/logs/snapshots 等用户可写数据均经此解析；
+// 生产环境 dataRoot 指向 %LOCALAPPDATA%，避免写入受保护安装目录。
+// 随包分发的只读资源（bin/xray.exe 等）不走此函数，由各 Manager 基于 appRoot 解析。
 // 如果传入的已经是绝对路径则直接返回。
 func (a *App) resolveAppPath(p string) string {
 	if filepath.IsAbs(p) {
 		return p
+	}
+	if a.dataRoot != "" {
+		return filepath.Join(a.dataRoot, p)
 	}
 	if a.appRoot != "" {
 		return filepath.Join(a.appRoot, p)
@@ -75,7 +81,7 @@ func (a *App) ensureDefaultCores() {
 		} else {
 			a.config.Browser.Cores = []browser.Core{}
 		}
-		if err := a.config.Save(a.resolveAppPath("config.yaml")); err != nil {
+		if err := a.config.Save(a.mainConfigPath()); err != nil {
 			log.Error("内核配置初始化失败", logger.F("error", err))
 			return
 		}
@@ -100,7 +106,7 @@ func (a *App) ensureDefaultCores() {
 		}
 	}
 	if changed {
-		if err := a.config.Save(a.resolveAppPath("config.yaml")); err != nil {
+		if err := a.config.Save(a.mainConfigPath()); err != nil {
 			log.Error("新内核注册保存失败", logger.F("error", err))
 		}
 	}

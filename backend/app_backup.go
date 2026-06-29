@@ -12,8 +12,9 @@ type BackupManifest = backup.Manifest
 // BackupGetScopeDefinition 返回当前环境下的备份范围定义（第一阶段：范围与包格式）。
 func (a *App) BackupGetScopeDefinition() (BackupScope, error) {
 	return backup.BuildScope(backup.BuildOptions{
-		AppRoot: a.appRoot,
-		Config:  a.config,
+		DataRoot:   a.dataRoot,
+		ConfigPath: a.mainConfigPath(),
+		Config:     a.config,
 	})
 }
 

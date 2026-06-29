@@ -38,7 +38,7 @@ func (a *App) stopRuntimeServices() {
 			a.speedScheduler = nil
 		}
 
-		if err := killResidualRuntimeProcesses(a.appRoot); err != nil {
+		if err := killResidualRuntimeProcesses(a.appRoot, a.dataRoot); err != nil {
 			log.Error("退出前清理残留进程失败", logger.F("error", err.Error()))
 		}
 	})

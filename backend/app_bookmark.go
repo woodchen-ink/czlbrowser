@@ -60,7 +60,7 @@ func (a *App) BookmarkSave(items []BrowserBookmark) error {
 
 	// 降级：写入 config.yaml
 	a.config.Browser.DefaultBookmarks = valid
-	if err := a.config.Save(a.resolveAppPath("config.yaml")); err != nil {
+	if err := a.config.Save(a.mainConfigPath()); err != nil {
 		log.Error("书签保存失败", logger.F("error", err.Error()))
 		return err
 	}

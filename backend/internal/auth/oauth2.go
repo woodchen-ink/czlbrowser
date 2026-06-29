@@ -58,7 +58,7 @@ type Manager struct {
 	token       *TokenData
 	user        *UserInfo
 	mu          sync.RWMutex
-	appRoot     string
+	appRoot     string // 可写数据根目录（token 文件落盘基准；生产指向 %LOCALAPPDATA%）
 	tokenFile   string
 	callbackSrv *http.Server // 当前回调服务器（用于重复登录时关闭上一个）
 	callbackMu  sync.Mutex

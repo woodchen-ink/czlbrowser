@@ -23,6 +23,15 @@ func (a *App) appRootAbs() string {
 	return root
 }
 
+// mainConfigPath 返回主配置文件路径：优先已初始化的 configPath（生产=%APPDATA%，dev=项目根），
+// 为空时（如未调用 SetDevMode 的测试场景）回退到 dataRoot/config.yaml。
+func (a *App) mainConfigPath() string {
+	if strings.TrimSpace(a.configPath) != "" {
+		return a.configPath
+	}
+	return a.resolveAppPath("config.yaml")
+}
+
 // appDataDir 返回 data 根目录绝对路径。
 func (a *App) appDataDir() string {
 	return a.resolveAppPath("data")
