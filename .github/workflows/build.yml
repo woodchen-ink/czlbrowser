@@ -64,10 +64,13 @@ jobs:
           $v = (Get-Content -Encoding UTF8 wails.json | ConvertFrom-Json).info.productVersion
           if ([string]::IsNullOrWhiteSpace($v)) { $v = '0.0.0' }
           $full = "$v-build$($env:GITHUB_RUN_NUMBER)"
-          "version=$v"      | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # tag 与 asset 文件名固定不变，alist 代理出的下载链接保持稳定；
+          # fullVersion 仅用于 Release 标题/正文与安装包内部元数据展示。
+          "version=$v"        | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "fullVersion=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "tag=v$full"      | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "Version: $v  Tag: v$full"
+          "tag=latest"        | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "assetName=CZLBrowser-Setup.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $full  Tag: latest  Asset: CZLBrowser-Setup.exe"
 
       - name: Wails build
         run: wails build -platform windows/amd64 -trimpath
@@ -132,28 +135,34 @@ jobs:
           & $makensis "/DVERSION=$ver" "/DSTAGINGDIR=$staging" 'publish/installer.nsi'
           if ($LASTEXITCODE -ne 0) { throw "NSIS failed with exit $LASTEXITCODE" }
 
-          $out = "publish/output/CZLBrowser-Setup-$ver.exe"
-          if (-not (Test-Path $out)) { throw "Installer not found: $out" }
-          Write-Host "Installer: $out"
+          # NSIS 内部按版本号命名，重命名为固定 asset 名以稳定下载路径。
+          $built = "publish/output/CZLBrowser-Setup-$ver.exe"
+          if (-not (Test-Path $built)) { throw "Installer not found: $built" }
+          $final = 'publish/output/${{ steps.version.outputs.assetName }}'
+          Move-Item -Force $built $final
+          Write-Host "Installer: $final"
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v7
         with:
           name: CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}
-          path: publish/output/CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}.exe
+          path: publish/output/${{ steps.version.outputs.assetName }}
           retention-days: 90
           if-no-files-found: error
 
       - name: Publish Release
         uses: softprops/action-gh-release@v3
         with:
+          # 固定 tag=latest，每次覆盖同一 Release 与同名 asset，
+          # 使 alist GitHub 发行版代理出的下载链接保持稳定。
           tag_name: ${{ steps.version.outputs.tag }}
           name: CZL Browser ${{ steps.version.outputs.fullVersion }}
+          make_latest: 'true'
           body: |
             自动构建产物（Windows x64，不含 Chrome 内核，需自备内核）。
 
             - 提交: ${{ github.sha }}
             - 分支: ${{ github.ref_name }}
-          files: publish/output/CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}.exe
+          files: publish/output/${{ steps.version.outputs.assetName }}
           draft: false
           prerelease: false
