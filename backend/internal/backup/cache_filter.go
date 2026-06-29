@@ -60,6 +60,14 @@ var chromiumDefaultCacheSubPaths = [][2]string{
 	{"Network", "Cache"},
 }
 
+// chromiumExtensionBlocklist 是导入/导出时跳过的可重建或外部联动扩展本体。
+var chromiumExtensionBlocklist = map[string]struct{}{
+	"efaidnbmnnnibpcajpcglclefindmkaj": {}, // Adobe Acrobat
+	"ghbmnnjooekpmoecnnnilnnbdlolhkhi": {}, // Google Docs Offline
+	"ngpampappnmepgilojfohadhhmbhlaek": {}, // IDM Integration Module
+	"nmmhkkegccagdldgiimedpiccmgmieda": {}, // Chrome Web Store Payments
+}
+
 // profileRootMarkers 是判定某目录为 profile 根的标志性直接子项。
 var profileRootMarkers = []string{"Default", "Local State"}
 
@@ -157,6 +165,9 @@ func isProfileKeepTop(name string) bool {
 
 // isDefaultInternalCache 判断数据目录内部路径是否落在可重建缓存目录。
 func isDefaultInternalCache(segs []string) bool {
+	if isBlockedExtensionPath(segs) {
+		return true
+	}
 	for _, seg := range segs {
 		if _, ok := chromiumDefaultCacheDirNames[seg]; ok {
 			return true
@@ -167,6 +178,20 @@ func isDefaultInternalCache(segs []string) bool {
 			if segs[i] == pair[0] && segs[i+1] == pair[1] {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// isBlockedExtensionPath 判断路径是否命中需排除的 Chromium 扩展本体目录。
+func isBlockedExtensionPath(segs []string) bool {
+	for i := 0; i+1 < len(segs); i++ {
+		if segs[i] != "Extensions" {
+			continue
+		}
+		extensionID := strings.ToLower(strings.TrimSpace(segs[i+1]))
+		if _, ok := chromiumExtensionBlocklist[extensionID]; ok {
+			return true
 		}
 	}
 	return false

@@ -74,6 +74,10 @@ func TestProfileAwareSkip_SkipsAndKeeps(t *testing.T) {
 		"repro_acl/WasmTtsEngine/20260528.1/bindings_main.wasm",
 		"repro_acl/Default/Cache/data_0",
 		"repro_acl/Default/Service Worker/CacheStorage/a",
+		"repro_acl/Default/Extensions/efaidnbmnnnibpcajpcglclefindmkaj/26.4.1.0_0/manifest.json",
+		"repro_acl/Default/Extensions/ghbmnnjooekpmoecnnnilnnbdlolhkhi/1.104.1_0/manifest.json",
+		"repro_acl/Default/Extensions/ngpampappnmepgilojfohadhhmbhlaek/6.42.64_0/manifest.json",
+		"repro_acl/Default/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0/manifest.json",
 	}
 	for _, rel := range shouldSkip {
 		if !skip(rel) {
@@ -88,6 +92,8 @@ func TestProfileAwareSkip_SkipsAndKeeps(t *testing.T) {
 		"repro_acl/Default/Cookies", // 账号数据
 		"repro_acl/Default/Login Data",
 		"repro_acl/Default/IndexedDB/https_x/000001.ldb",
+		"repro_acl/Default/Extensions/nngceckbapebfimnlniiiahkandclblb/2026.2.0_0/manifest.json", // Bitwarden 保留
+		"repro_acl/Default/Local Extension Settings/efaidnbmnnnibpcajpcglclefindmkaj/000003.log", // 扩展状态保留
 		"app.db",             // 非 profile 业务数据
 		"snapshots/abc/file", // 非 profile 目录
 		"",
