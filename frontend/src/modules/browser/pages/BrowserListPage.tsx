@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Activity, ChevronDown, ChevronRight, ChevronUp, Copy, FileText, Key, Play, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, LayoutGrid, List } from 'lucide-react'
-import { Badge, Button, Card, FormItem, Input, Modal, StatCard, Table, Textarea, toast } from '../../../shared/components'
+import { Badge, Button, Card, FormItem, Input, Modal, Table, Textarea, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
 import type { BrowserCore, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount } from '../types'
 import { InstanceFilterBar, EMPTY_FILTERS } from '../components/InstanceFilterBar'
@@ -62,6 +62,21 @@ function BatchToolbar({
         <Button size="sm" variant="ghost" onClick={onBatchDelete} title="批量删除" className="text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-soft)]">
           <Trash2 className="w-3.5 h-3.5" />删除
         </Button>
+      </div>
+    </div>
+  )
+}
+
+// 紧凑统计条目（替代大号 StatCard，压缩顶部占用高度）
+function CompactStat({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]">
+      <div className="w-7 h-7 rounded-md bg-[var(--color-bg-muted)] flex items-center justify-center text-[var(--color-text-secondary)] shrink-0">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] text-[var(--color-text-muted)] leading-none">{title}</p>
+        <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1 tabular-nums leading-none">{value}</p>
       </div>
     </div>
   )
@@ -594,7 +609,7 @@ export function BrowserListPage() {
   ]
 
   return (
-    <div className="overflow-auto p-5 space-y-5 animate-fade-in h-full">
+    <div className="overflow-auto p-5 space-y-3 animate-fade-in h-full">
       {/* 页头 */}
       <div className="flex items-center justify-between">
         <div>
@@ -632,10 +647,10 @@ export function BrowserListPage() {
       {/* 可折叠的统计+筛选区 */}
       {!headerCollapsed && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard title="配置总数" value={`${profiles.length}`} icon={<FileText className="w-5 h-5" />} />
-            <StatCard title="运行中实例" value={`${runningCount}`} icon={<Activity className="w-5 h-5" />} />
-            <StatCard title="停止实例" value={`${profiles.length - runningCount}`} icon={<Square className="w-5 h-5 text-[var(--color-text-muted)]" />} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <CompactStat title="配置总数" value={`${profiles.length}`} icon={<FileText className="w-4 h-4" />} />
+            <CompactStat title="运行中实例" value={`${runningCount}`} icon={<Activity className="w-4 h-4" />} />
+            <CompactStat title="停止实例" value={`${profiles.length - runningCount}`} icon={<Square className="w-4 h-4 text-[var(--color-text-muted)]" />} />
           </div>
 
           <InstanceFilterBar
@@ -662,7 +677,7 @@ export function BrowserListPage() {
       />
 
       <Card padding="none">
-        <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+        <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 270px)' }}>
           {/* Replace table with Flex column of Cards */}
           {loading ? (
             <div className="py-16 flex items-center justify-center text-sm text-[var(--color-text-muted)]">加载中...</div>

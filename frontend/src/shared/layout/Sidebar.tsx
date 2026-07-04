@@ -1,10 +1,16 @@
+import { useRef, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Activity,
+  AlertCircle,
+  Bell,
   Bookmark,
   BookOpen,
+  Check,
+  CheckCircle,
   Crown,
   FileText,
+  Info,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -18,6 +24,7 @@ import {
   Cpu,
   Globe,
   Tag,
+  Trash2,
   User,
   type LucideIcon
 } from 'lucide-react'
@@ -25,6 +32,7 @@ import clsx from 'clsx'
 import { useLayoutStore } from '../../store/layoutStore'
 import { projectConfig, navigationConfig } from '../../config'
 import { useAuthStore } from '../../store/authStore'
+import { useNotificationStore, type Notification } from '../../store/notificationStore'
 
 // 导入应用logo
 import logoImage from '../../resources/images/logo.png'
@@ -62,12 +70,135 @@ const LEVEL_LABELS: Record<string, string> = {
   visitor: '访客',
 }
 
+function NotificationDropdown({
+  notifications,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onClear,
+}: {
+  notifications: Notification[]
+  onMarkAsRead: (id: string) => void
+  onMarkAllAsRead: () => void
+  onClear: () => void
+}) {
+  const unreadCount = notifications.filter(n => !n.read).length
+
+  const getIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'success': return <CheckCircle className="w-4 h-4 text-[var(--color-success)]" />
+      case 'warning': return <AlertCircle className="w-4 h-4 text-[var(--color-warning)]" />
+      case 'error': return <AlertCircle className="w-4 h-4 text-[var(--color-error)]" />
+      default: return <Info className="w-4 h-4 text-[var(--color-accent)]" />
+    }
+  }
+
+  return (
+    <div className="absolute left-full bottom-0 ml-2 w-80 bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
+      <div className="px-4 py-3 border-b border-[var(--color-border-muted)] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[var(--color-text-primary)]">通知</span>
+          {unreadCount > 0 && (
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-[var(--color-accent)] text-[var(--color-text-inverse)] rounded-full">
+              {unreadCount}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {unreadCount > 0 && (
+            <button
+              onClick={onMarkAllAsRead}
+              className="p-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-bg-muted)] rounded transition-colors"
+              title="全部标为已读"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            onClick={onClear}
+            className="p-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-bg-muted)] rounded transition-colors"
+            title="清空通知"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="max-h-80 overflow-y-auto">
+        {notifications.length === 0 ? (
+          <div className="py-8 text-center text-[var(--color-text-muted)]">
+            <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">暂无通知</p>
+          </div>
+        ) : (
+          notifications.map((notification) => (
+            <div
+              key={notification.id}
+              onClick={() => onMarkAsRead(notification.id)}
+              className={clsx(
+                'px-4 py-3 border-b border-[var(--color-border-muted)] last:border-0 cursor-pointer transition-colors hover:bg-[var(--color-bg-muted)]',
+                !notification.read && 'bg-[var(--color-accent)]/5'
+              )}
+            >
+              <div className="flex gap-3">
+                <div className="shrink-0 mt-0.5">
+                  {getIcon(notification.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className={clsx(
+                      'text-sm truncate',
+                      notification.read ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-primary)] font-medium'
+                    )}>
+                      {notification.title}
+                    </p>
+                    {!notification.read && (
+                      <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] shrink-0 mt-1.5" />
+                    )}
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                    {notification.message}
+                  </p>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                    {notification.time}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {notifications.length > 0 && (
+        <div className="px-4 py-2 border-t border-[var(--color-border-muted)] bg-[var(--color-bg-muted)]/50">
+          <button className="w-full text-xs text-center text-[var(--color-accent)] hover:underline">
+            查看全部通知
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Sidebar() {
   const location = useLocation()
   const { sidebarCollapsed, toggleSidebar } = useLayoutStore()
   const { state: authState, logout } = useAuthStore()
   const user = authState.user
   const levelLabel = LEVEL_LABELS[authState.level] || authState.level || '用户'
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotificationStore()
+  const unreadCount = notifications.filter(n => !n.read).length
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <aside className={clsx(
@@ -195,6 +326,41 @@ export function Sidebar() {
         )}
 
         <div className="space-y-1">
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => setShowNotifications(prev => !prev)}
+              title={sidebarCollapsed ? '通知' : undefined}
+              className={clsx(
+                'flex items-center rounded-lg transition-all duration-150',
+                showNotifications
+                  ? 'text-[var(--color-accent)] bg-[var(--color-accent-muted)]'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-muted)] hover:text-[var(--color-text-primary)]',
+                sidebarCollapsed ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2.5 gap-3'
+              )}
+            >
+              <span className="relative flex-shrink-0">
+                <Bell className="w-[18px] h-[18px]" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 text-[9px] font-medium bg-[var(--color-error)] text-[var(--color-text-inverse)] rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </span>
+              {!sidebarCollapsed && <span className="text-sm font-medium truncate">通知{unreadCount > 0 ? `（${unreadCount}）` : ''}</span>}
+            </button>
+
+            {showNotifications && (
+              <NotificationDropdown
+                notifications={notifications}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onClear={() => {
+                  clearNotifications()
+                  setShowNotifications(false)
+                }}
+              />
+            )}
+          </div>
           <Link
             to="/profile"
             title={sidebarCollapsed ? '个人信息' : undefined}
