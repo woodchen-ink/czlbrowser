@@ -18,14 +18,15 @@ import (
 	"time"
 )
 
-// UserInfo OAuth2 用户信息
+// UserInfo OAuth2 用户信息。
+// CZL Connect 还会下发 groups（权限分组数组），当前产品开源免费、不做等级区分，
+// 故不定义该字段，由 encoding/json 直接忽略。
 type UserInfo struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
 	Email    string `json:"email"`
 	Avatar   string `json:"avatar"`
-	Groups   string `json:"groups"` // 逗号分隔的权限等级
 }
 
 // TokenData OAuth2 令牌数据
@@ -41,7 +42,6 @@ type TokenData struct {
 type AuthState struct {
 	LoggedIn bool      `json:"loggedIn"`
 	User     *UserInfo `json:"user,omitempty"`
-	Level    string    `json:"level"` // 当前最高等级
 }
 
 // 内置 OAuth2 常量配置
@@ -91,7 +91,6 @@ func (m *Manager) GetAuthState() AuthState {
 	return AuthState{
 		LoggedIn: true,
 		User:     user,
-		Level:    m.parseHighestLevel(),
 	}
 }
 
@@ -192,12 +191,11 @@ func (m *Manager) StartLogin(ctx context.Context, onResult func(LoginResult)) (s
 				return
 			}
 			m.saveToken()
-			log.Info("OAuth2 登录成功",
-				logger.F("username", m.user.Username),
-				logger.F("level", m.parseHighestLevel()),
-			)
+			// 统一从 GetAuthState 取快照，避免脱离读锁直接访问 m.user。
+			authState := m.GetAuthState()
+			log.Info("OAuth2 登录成功", logger.F("username", authState.User.Username))
 			if onResult != nil {
-				onResult(LoginResult{Success: true, State: m.GetAuthState()})
+				onResult(LoginResult{Success: true, State: authState})
 			}
 		case err := <-errCh:
 			log.Error("OAuth2 回调失败", logger.F("error", err))
@@ -474,29 +472,6 @@ func isInvalidGrant(err error) bool {
 	return strings.Contains(msg, "invalid_grant") ||
 		strings.Contains(msg, "400") ||
 		strings.Contains(msg, "401")
-}
-
-// parseHighestLevel 解析用户最高等级
-func (m *Manager) parseHighestLevel() string {
-	if m.user == nil || m.user.Groups == "" {
-		return "visitor"
-	}
-
-	groups := strings.Split(m.user.Groups, ",")
-	groupSet := make(map[string]bool, len(groups))
-	for _, g := range groups {
-		groupSet[strings.TrimSpace(g)] = true
-	}
-
-	// 按优先级从高到低检查
-	levels := []string{"admin", "t5", "t4", "t3", "t2", "t1", "t0", "viewer"}
-	for _, level := range levels {
-		if groupSet[level] {
-			return level
-		}
-	}
-
-	return "visitor"
 }
 
 // generateState 生成随机 state 参数

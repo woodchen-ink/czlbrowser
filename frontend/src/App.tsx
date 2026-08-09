@@ -96,7 +96,7 @@ function useAuthEvents() {
 
     // 会话确已失效（refresh_token 过期）：清除登录态回到登录页
     const offExpired = runtime.EventsOn('auth:session:expired', () => {
-      useAuthStore.setState({ state: { loggedIn: false, level: '' } })
+      useAuthStore.setState({ state: { loggedIn: false } })
     })
 
     return () => {

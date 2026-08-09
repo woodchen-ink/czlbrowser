@@ -6,13 +6,11 @@ export interface AuthUserInfo {
   nickname: string
   email: string
   avatar: string
-  groups: string
 }
 
 export interface AuthState {
   loggedIn: boolean
   user?: AuthUserInfo
-  level: string
 }
 
 interface AuthStore {
@@ -37,7 +35,7 @@ interface AuthStore {
 const goApp = () => (window as any).go?.main?.App
 
 export const useAuthStore = create<AuthStore>((set) => ({
-  state: { loggedIn: false, level: '' },
+  state: { loggedIn: false },
   loading: true,
   loginPending: false,
   loginError: '',
@@ -74,7 +72,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       if (app?.AuthLogout) {
         await app.AuthLogout()
       }
-      set({ state: { loggedIn: false, level: '' }, loginPending: false, loginError: '' })
+      set({ state: { loggedIn: false }, loginPending: false, loginError: '' })
     } catch {
       // 忽略登出错误
     }

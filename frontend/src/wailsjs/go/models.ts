@@ -6,7 +6,6 @@ export namespace auth {
 	    nickname: string;
 	    email: string;
 	    avatar: string;
-	    groups: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UserInfo(source);
@@ -19,13 +18,11 @@ export namespace auth {
 	        this.nickname = source["nickname"];
 	        this.email = source["email"];
 	        this.avatar = source["avatar"];
-	        this.groups = source["groups"];
 	    }
 	}
 	export class AuthState {
 	    loggedIn: boolean;
 	    user?: UserInfo;
-	    level: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AuthState(source);
@@ -35,7 +32,6 @@ export namespace auth {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.loggedIn = source["loggedIn"];
 	        this.user = this.convertValues(source["user"], UserInfo);
-	        this.level = source["level"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

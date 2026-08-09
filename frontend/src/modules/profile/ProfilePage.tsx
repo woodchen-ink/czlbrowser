@@ -1,44 +1,10 @@
-import { User, Mail, Crown, Shield, LogOut, ExternalLink } from 'lucide-react'
-import { Card, Button, Badge } from '../../shared/components'
+import { User, Mail, LogOut, ExternalLink } from 'lucide-react'
+import { Card, Button } from '../../shared/components'
 import { useAuthStore } from '../../store/authStore'
-
-/** 等级显示名称 */
-const LEVEL_LABELS: Record<string, string> = {
-  admin: '管理员',
-  t5: 'T5',
-  t4: 'T4',
-  t3: 'T3',
-  t2: 'T2',
-  t1: 'T1',
-  t0: 'T0',
-  viewer: '观察者',
-  visitor: '访客',
-}
-
-/** 等级描述 */
-const LEVEL_DESCRIPTIONS: Record<string, string> = {
-  admin: '拥有全部管理权限',
-  t5: '高级用户，享有完整功能',
-  t4: '高级用户',
-  t3: '进阶用户',
-  t2: '标准用户',
-  t1: '基础用户',
-  t0: '入门用户',
-  viewer: '只读访问',
-  visitor: '未分配等级',
-}
 
 export function ProfilePage() {
   const { state: authState, logout } = useAuthStore()
   const user = authState.user
-  const level = authState.level || 'visitor'
-  const levelLabel = LEVEL_LABELS[level] || level
-  const levelDesc = LEVEL_DESCRIPTIONS[level] || ''
-
-  // 解析用户拥有的所有权限组
-  const groups = user?.groups
-    ? user.groups.split(',').map((g) => g.trim()).filter(Boolean)
-    : []
 
   const handleLogout = async () => {
     await logout()
@@ -111,51 +77,6 @@ export function ProfilePage() {
           </div>
         </div>
       </Card>
-
-      {/* 等级信息 */}
-      <Card
-        title="账号等级"
-        actions={<Crown className="w-4 h-4 text-[var(--color-text-muted)]" />}
-        padding="lg"
-        className="rounded-2xl"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-accent)]/10 text-lg font-semibold text-[var(--color-accent)]">
-              <Crown className="w-5 h-5" />
-              {levelLabel}
-            </span>
-            {levelDesc && (
-              <span className="text-sm text-[var(--color-text-muted)]">{levelDesc}</span>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* 权限组 */}
-      {groups.length > 0 && (
-        <Card
-          title="权限组"
-          actions={<Shield className="w-4 h-4 text-[var(--color-text-muted)]" />}
-          padding="lg"
-          className="rounded-2xl"
-        >
-          <div className="flex flex-wrap gap-2">
-            {groups.map((group) => (
-              <Badge
-                key={group}
-                className={`rounded-lg px-3 py-1.5 text-sm ${
-                  group === level
-                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium'
-                    : ''
-                }`}
-              >
-                {LEVEL_LABELS[group] || group}
-              </Badge>
-            ))}
-          </div>
-        </Card>
-      )}
     </div>
   )
 }

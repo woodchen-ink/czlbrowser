@@ -8,7 +8,6 @@ import {
   BookOpen,
   Check,
   CheckCircle,
-  Crown,
   FileText,
   Info,
   LayoutDashboard,
@@ -56,18 +55,6 @@ const iconMap: Record<string, LucideIcon> = {
 
 function getIcon(iconName: string): LucideIcon {
   return iconMap[iconName] || LayoutDashboard
-}
-
-const LEVEL_LABELS: Record<string, string> = {
-  admin: '管理员',
-  t5: 'T5',
-  t4: 'T4',
-  t3: 'T3',
-  t2: 'T2',
-  t1: 'T1',
-  t0: 'T0',
-  viewer: '观察者',
-  visitor: '访客',
 }
 
 function NotificationDropdown({
@@ -184,7 +171,6 @@ export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useLayoutStore()
   const { state: authState, logout } = useAuthStore()
   const user = authState.user
-  const levelLabel = LEVEL_LABELS[authState.level] || authState.level || '用户'
   const [showNotifications, setShowNotifications] = useState(false)
   const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotificationStore()
   const unreadCount = notifications.filter(n => !n.read).length
@@ -314,13 +300,6 @@ export function Sidebar() {
                   {user?.email || ''}
                 </div>
               </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-[var(--color-text-muted)]">当前等级</span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--color-accent)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-accent)]">
-                <Crown className="w-3 h-3" />
-                {levelLabel}
-              </span>
             </div>
           </div>
         )}
