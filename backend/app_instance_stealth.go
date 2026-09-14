@@ -14,7 +14,10 @@ import (
 )
 
 // stealthScript 会注入到每个页面的新文档上下文中，补齐常见的反自动化探针。
+// 包在 IIFE 中：同一文档可能被 addScriptToEvaluateOnNewDocument 与 Runtime.evaluate 各执行一次，
+// 顶层 const 重复声明会抛 SyntaxError（window.open 场景下还会冒泡成页面里的 open 异常）。
 const stealthScript = `
+(() => {
 Object.defineProperty(navigator, 'webdriver', {
   get: () => false,
   configurable: true,
@@ -59,6 +62,7 @@ if (originalPrepareStackTrace) {
     ));
   };
 }
+})();
 `
 
 type cdpBrowserVersion struct {
@@ -249,6 +253,10 @@ func injectStealthScripts(debugPort int, log *logger.Logger, profileID string, t
 	}
 
 	applySession := func(sessionID string, targetID string, targetType string) {
+		// 无论是否注入，都必须放行该 session：window.open 打开的新窗口在自动附加后会停在
+		// "等待调试器"状态，与 opener 共享渲染进程，不放行会导致新标签停在 about:blank、
+		// 原页面显示"已在调试程序中暂停"并卡死。对未处于等待状态的 target 调用是无害的。
+		defer resumeTargetIfWaiting(conn, sessionID)
 		if !shouldManageStealthTarget(targetType) {
 			return
 		}
@@ -358,6 +366,14 @@ func applyStealthToSession(conn *cdpConn, sessionID string, timezone string) err
 		return fmt.Errorf("Runtime.evaluate failed: %w", err)
 	}
 	return nil
+}
+
+// resumeTargetIfWaiting 放行因自动附加而暂停在启动阶段的 target。
+func resumeTargetIfWaiting(conn *cdpConn, sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	_, _ = conn.call("Runtime.runIfWaitingForDebugger", nil, sessionID)
 }
 
 func shouldManageStealthTarget(targetType string) bool {
