@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FolderOpen, Layers } from 'lucide-react'
 import { Button, Card, ConfirmModal, FormItem, Input, Modal, Select, Textarea, toast } from '../../../shared/components'
-import type { BrowserCore, BrowserProfileInput, BrowserProxy, BrowserGroup } from '../types'
-import { createBrowserProfile, fetchAllTags, fetchBrowserCores, fetchBrowserProfiles, fetchBrowserProxies, fetchGroups, openUserDataDir, updateBrowserProfile } from '../api'
+import type { BrowserCore, BrowserCoreExtended, BrowserProfileInput, BrowserProxy, BrowserGroup } from '../types'
+import { createBrowserProfile, fetchAllTags, fetchBrowserCores, fetchCoreExtendedInfo, fetchBrowserProfiles, fetchBrowserProxies, fetchGroups, openUserDataDir, updateBrowserProfile } from '../api'
 import { FingerprintPanel } from '../components/FingerprintPanel'
 import { TagInput } from '../components/TagInput'
 import { GroupSelector } from '../components/GroupSelector'
@@ -26,6 +26,9 @@ export function BrowserEditPage() {
     groupId: '',
   })
   const [cores, setCores] = useState<BrowserCore[]>([])
+  const [coreInfo, setCoreInfo] = useState<Map<string, BrowserCoreExtended>>(new Map())
+  // 实例原本使用的内核，用于切换内核时提示兼容性影响
+  const [originalCoreId, setOriginalCoreId] = useState<string | null>(null)
   const [proxies, setProxies] = useState<BrowserProxy[]>([])
   const [groups, setGroups] = useState<BrowserGroup[]>([])
   const [launchArgsText, setLaunchArgsText] = useState('')
@@ -38,13 +41,15 @@ export function BrowserEditPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const [coreList, proxyList, tagList, groupList] = await Promise.all([
+      const [coreList, proxyList, tagList, groupList, extendedList] = await Promise.all([
         fetchBrowserCores(),
         fetchBrowserProxies(),
         fetchAllTags(),
         fetchGroups(),
+        fetchCoreExtendedInfo(),
       ])
       setCores(coreList)
+      setCoreInfo(new Map(extendedList.map(info => [info.coreId, info])))
       setProxies(proxyList)
       setAllTags(tagList)
       setGroups(groupList)
@@ -66,6 +71,7 @@ export function BrowserEditPage() {
         groupId: current.groupId || '',
       })
       setLaunchArgsText(current.launchArgs.join('\n'))
+      setOriginalCoreId(current.coreId)
     }
     loadData()
   }, [id, isCreate])
@@ -103,6 +109,26 @@ export function BrowserEditPage() {
   }
 
   const defaultCore = cores.find(c => c.isDefault)
+
+  // 空 coreId 表示使用默认内核
+  const resolveCoreInfo = (coreId: string) => coreInfo.get(coreId || defaultCore?.coreId || '')
+  const coreSwitchWarnings = (() => {
+    if (isCreate || originalCoreId === null) return []
+    const before = resolveCoreInfo(originalCoreId)
+    const after = resolveCoreInfo(formData.coreId)
+    if (!before || !after || before.coreId === after.coreId) return []
+    const warnings: string[] = []
+    if (before.coreKind !== after.coreKind) {
+      warnings.push('内核类型发生变化（标准 Chrome 与 Clearcote 的指纹实现不同），网站看到的浏览器品牌、GPU、Canvas 等指纹会改变，已登录账号可能触发风控或二次验证；Cookie 与本地数据会保留。')
+    }
+    const majorOf = (version: string) => Number.parseInt(version.split('.')[0] || '', 10)
+    const beforeMajor = majorOf(before.chromeVersion)
+    const afterMajor = majorOf(after.chromeVersion)
+    if (Number.isFinite(beforeMajor) && Number.isFinite(afterMajor) && afterMajor < beforeMajor) {
+      warnings.push(`目标内核版本（${afterMajor}）低于当前内核（${beforeMajor}），降级打开实例数据时个别站点数据可能不兼容，建议先导出备份。`)
+    }
+    return warnings
+  })()
 
   const handleOpenUserDataDir = async () => {
     if (!formData.userDataDir.trim()) {
@@ -160,6 +186,9 @@ export function BrowserEditPage() {
                 ]
               }
             />
+            {coreSwitchWarnings.map(warning => (
+              <p key={warning} className="text-xs text-[var(--color-warning)]">{warning}</p>
+            ))}
           </FormItem>
           <FormItem label="标签">
             <TagInput

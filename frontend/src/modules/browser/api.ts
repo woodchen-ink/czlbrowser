@@ -1,4 +1,4 @@
-import type { BrowserProfile, BrowserProfileInput, BrowserTab, BrowserSettings, BrowserCore, BrowserCoreValidateResult, BrowserProxy, BrowserCoreExtended, CookieInfo, SnapshotInfo, BrowserBookmark, BrowserGroup, BrowserGroupInput, BrowserGroupWithCount, ProxyIPHealthResult } from './types'
+import type { BrowserProfile, BrowserProfileInput, BrowserTab, BrowserSettings, BrowserCore, BrowserCoreValidateResult, BrowserProxy, BrowserCoreExtended, CoreKind, CookieInfo, SnapshotInfo, BrowserBookmark, BrowserGroup, BrowserGroupInput, BrowserGroupWithCount, ProxyIPHealthResult } from './types'
 
 const getBindings = async () => {
   try {
@@ -261,6 +261,7 @@ export interface BuiltinCoreSource {
   id: string
   name: string
   version: string
+  kind: CoreKind
   description: string
   installed: boolean
 }
@@ -271,6 +272,15 @@ export async function fetchBuiltinCores(): Promise<BuiltinCoreSource[]> {
     return (await bindings.BrowserBuiltinCores()) || []
   }
   return []
+}
+
+// 强制从远程重新拉取内核清单（远程不可用时后端回退到本地缓存 / 内嵌清单）
+export async function refreshBuiltinCores(): Promise<BuiltinCoreSource[]> {
+  const bindings: any = await getBindings()
+  if (bindings?.BrowserBuiltinCoresRefresh) {
+    return (await bindings.BrowserBuiltinCoresRefresh()) || []
+  }
+  return fetchBuiltinCores()
 }
 
 export async function downloadBuiltinCore(builtinId: string, proxyConfig: string): Promise<void> {

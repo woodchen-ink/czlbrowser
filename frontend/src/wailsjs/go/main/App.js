@@ -58,6 +58,10 @@ export function BrowserBuiltinCores() {
   return window['go']['main']['App']['BrowserBuiltinCores']();
 }
 
+export function BrowserBuiltinCoresRefresh() {
+  return window['go']['main']['App']['BrowserBuiltinCoresRefresh']();
+}
+
 export function BrowserClearCookies(arg1) {
   return window['go']['main']['App']['BrowserClearCookies'](arg1);
 }

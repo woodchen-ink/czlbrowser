@@ -96,10 +96,14 @@ export interface ProxyIPHealthResult {
   updatedAt: string
 }
 
+// 内核类型：chrome=标准 Chrome（CDP 注入时区/反检测），clearcote=引擎级指纹与原生时区开关
+export type CoreKind = 'chrome' | 'clearcote'
+
 export interface BrowserCoreExtended {
   coreId: string
   chromeVersion: string
   instanceCount: number
+  coreKind: CoreKind
 }
 
 export interface CookieInfo {

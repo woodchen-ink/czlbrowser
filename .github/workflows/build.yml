@@ -46,6 +46,24 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # 客户端运行时会从 woodchen-ink/Chrome-exe 拉取最新内核清单；这里把内嵌兜底清单也刷新到最新，
+      # 远程不可用或校验失败时保留仓库中的版本，不影响构建。
+      - name: Refresh embedded core manifest
+        shell: pwsh
+        run: |
+          $target = 'backend/builtin_cores.json'
+          $backup = Get-Content -Raw $target
+          try {
+            $content = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 30 'https://raw.githubusercontent.com/woodchen-ink/Chrome-exe/main/cores.json').Content
+            [IO.File]::WriteAllText((Resolve-Path $target), $content)
+            go test ./backend/ -run '^TestBuiltinCoresManifest$' -count=1
+            if ($LASTEXITCODE -ne 0) { throw '远程内核清单未通过校验' }
+            Write-Host '内嵌内核清单已刷新'
+          } catch {
+            [IO.File]::WriteAllText((Resolve-Path $target), $backup)
+            Write-Warning "内核清单刷新失败，沿用仓库版本: $_"
+          }
+
       - name: Generate Wails bindings
         shell: pwsh
         run: |

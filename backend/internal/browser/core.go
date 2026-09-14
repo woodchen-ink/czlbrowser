@@ -271,6 +271,12 @@ func (m *Manager) GetChromeVersion(corePath string) string {
 				return version
 			}
 		}
+		// 官方 Chrome（Chrome-bin 布局）根目录无 manifest，版本号是 chrome.dll 所在子目录名
+		if dll := findChromeDLL(baseDir); dll != "" {
+			if version := filepath.Base(filepath.Dir(dll)); chromeVersionPattern.MatchString(version) {
+				return version
+			}
+		}
 		return ""
 	}
 
@@ -313,6 +319,7 @@ func (m *Manager) GetCoresExtendedInfo() []CoreExtendedInfo {
 			CoreId:        core.CoreId,
 			ChromeVersion: m.GetChromeVersion(core.CorePath),
 			InstanceCount: m.CountInstancesByCore(core.CoreId),
+			CoreKind:      string(m.ResolveCoreKind(core)),
 		}
 		result = append(result, info)
 	}

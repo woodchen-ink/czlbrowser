@@ -72,6 +72,7 @@ type CoreExtendedInfo struct {
 	CoreId        string `json:"coreId"`
 	ChromeVersion string `json:"chromeVersion"`
 	InstanceCount int    `json:"instanceCount"`
+	CoreKind      string `json:"coreKind"` // chrome | clearcote，决定实例启动时的注入方式
 }
 
 // Group 实例分组

@@ -3,6 +3,8 @@ package browser
 import (
 	"archive/zip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -72,8 +74,20 @@ func readWindowsSystemProxy() (string, error) {
 	return proxyServer, nil
 }
 
-// DownloadAndExtractCore 执行异步下载解压并在过程中发送事件
-func (m *Manager) DownloadAndExtractCore(ctx context.Context, coreName string, targetUrl string, proxyConfig string) {
+// SystemProxyURL 返回 Windows 系统代理（注册表优先，其次环境变量），未配置时返回 nil。
+// 供内核清单等轻量请求复用，与内核下载的"系统代理"模式保持一致。
+func SystemProxyURL(req *http.Request) (*url.URL, error) {
+	if sysProxy, err := readWindowsSystemProxy(); err == nil && sysProxy != "" {
+		if proxyURL, err := url.Parse(sysProxy); err == nil {
+			return proxyURL, nil
+		}
+	}
+	return http.ProxyFromEnvironment(req)
+}
+
+// DownloadAndExtractCore 执行异步下载解压并在过程中发送事件。
+// expectedSHA256 非空时在解压前校验压缩包完整性（内置内核清单提供）。
+func (m *Manager) DownloadAndExtractCore(ctx context.Context, coreName string, targetUrl string, expectedSHA256 string, proxyConfig string) {
 	log := logger.New("Browser")
 	t := time.Now()
 
@@ -160,6 +174,19 @@ func (m *Manager) DownloadAndExtractCore(ctx context.Context, coreName string, t
 	}
 
 	tempFile.Close() // 解压前先关闭写句柄
+	if expectedSHA256 = strings.TrimSpace(expectedSHA256); expectedSHA256 != "" {
+		sendEvent("extracting", 0, "下载完成，正在校验文件完整性(SHA256)...")
+		actual, hashErr := fileSHA256(tempFilePath)
+		if hashErr != nil {
+			sendEvent("error", 0, "校验文件失败: "+hashErr.Error())
+			return
+		}
+		if !strings.EqualFold(actual, expectedSHA256) {
+			log.Error("内核压缩包 SHA256 校验不一致", logger.F("url", targetUrl), logger.F("expected", expectedSHA256), logger.F("actual", actual))
+			sendEvent("error", 0, "文件校验失败：SHA256 与发布值不一致，下载可能损坏或被篡改，请重试")
+			return
+		}
+	}
 	sendEvent("extracting", 0, "下载完成，正在准备解压文件...")
 	log.Info("内核下载完成", logger.F("url", targetUrl), logger.F("temp", tempFilePath), logger.F("cost", time.Since(t).String()))
 
@@ -451,4 +478,18 @@ func doSingleThreadDownload(ctx context.Context, client *http.Client, targetUrl 
 	buf := make([]byte, 1024*1024)
 	_, err = io.CopyBuffer(pw, resp.Body, buf)
 	return err
+}
+
+// fileSHA256 计算文件的 SHA256 十六进制摘要
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

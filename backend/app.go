@@ -491,7 +491,7 @@ func (a *App) BrowserCoreDownload(coreName, url, proxyConfig string) error {
 		return fmt.Errorf("app context is nil")
 	}
 	// 异步启动下载流程，以防阻塞前端请求，通过 Wails events 发送进度
-	go a.browserMgr.DownloadAndExtractCore(a.ctx, coreName, url, proxyConfig)
+	go a.browserMgr.DownloadAndExtractCore(a.ctx, coreName, url, "", proxyConfig)
 	return nil
 }
 

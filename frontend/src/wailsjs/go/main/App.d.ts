@@ -35,6 +35,8 @@ export function BrowserBuiltinCoreDownload(arg1:string,arg2:string):Promise<void
 
 export function BrowserBuiltinCores():Promise<Array<backend.BuiltinCoreSource>>;
 
+export function BrowserBuiltinCoresRefresh():Promise<Array<backend.BuiltinCoreSource>>;
+
 export function BrowserClearCookies(arg1:string):Promise<void>;
 
 export function BrowserCoreDelete(arg1:string):Promise<void>;

@@ -200,7 +200,9 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		)
 	}
 	proxyTimezone = effectiveTimezone
-	args = autoFillWebGLArgs(args, log, profileId)
+	// 按内核类型改写参数：标准 Chrome 走 CDP 注入，Clearcote 走引擎级原生开关
+	launchPlan := buildKernelLaunchPlan(browser.DetectCoreKind(chromeBinaryPath), args, proxyTimezone, log, profileId)
+	args = launchPlan.Args
 	// 有代理时，若用户未配置 WebRTC 策略，则强制禁用非代理 UDP 防止真实 IP 泄露
 	if effectiveProxy != "" && effectiveProxy != "direct://" {
 		args = upsertKeyValueArg(args, "--webrtc-ip-handling-policy", "disable_non_proxied_udp")
@@ -222,11 +224,6 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	cmd := exec.Command(chromeBinaryPath, args...)
 	// 注意：不对 Chrome 进程调用 hideWindow——Chrome 是 GUI 程序，HideWindow 会导致浏览器窗口不可见
 	cmd.Dir = filepath.Dir(chromeBinaryPath)
-	// 通过 TZ 环境变量在进程级别覆盖时区，对所有标签页生效（比 CDP per-target 更可靠）
-	if proxyTimezone != "" {
-		cmd.Env = append(os.Environ(), "TZ="+proxyTimezone)
-		log.Info("设置浏览器进程时区环境变量", logger.F("profile_id", profileId), logger.F("TZ", proxyTimezone))
-	}
 	stderrCapture := newCappedLogBuffer(64 * 1024)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = stderrCapture
@@ -262,13 +259,15 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		releaseXrayBridge = false
 	}
 
-	log.Info("实例启动", logger.F("profile_id", profileId), logger.F("debug_port", debugPort), logger.F("pid", profile.Pid), logger.F("proxy", effectiveProxy), logger.F("args", strings.Join(args, " ")))
+	log.Info("实例启动", logger.F("profile_id", profileId), logger.F("debug_port", debugPort), logger.F("pid", profile.Pid), logger.F("proxy", effectiveProxy), logger.F("core_kind", string(launchPlan.Kind)), logger.F("args", strings.Join(args, " ")))
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "browser:instance:started", profileId)
 	}
 
-	// 异步注入 stealth 脚本（navigator.webdriver 等反检测补丁）+ 时区覆盖
-	go injectStealthScripts(debugPort, log, profileId, proxyTimezone)
+	// 标准 Chrome：异步注入 stealth 脚本（navigator.webdriver 等反检测补丁）+ 时区覆盖
+	if launchPlan.InjectViaCDP {
+		go injectStealthScripts(debugPort, log, profileId, proxyTimezone)
+	}
 
 	go a.waitBrowserProcess(profileId, cmd)
 	return profile, nil
@@ -584,7 +583,8 @@ func (a *App) cleanupFailedBrowserStart(cmd *exec.Cmd) error {
 }
 
 // applyProxyLocaleArgs 根据代理出口 IP 的地理信息设置语言参数，并返回解析到的 IANA 时区标识。
-// 时区不再通过 --timezone 启动参数设置（标准 Chromium 不支持），改为通过 CDP Emulation.setTimezoneOverride 覆盖。
+// 时区的落地方式由内核类型决定（见 buildKernelLaunchPlan）：标准 Chrome 不支持 --timezone（TZ 环境变量同样无效），
+// 走 CDP Emulation.setTimezoneOverride；Clearcote 使用原生 --timezone 开关。
 func (a *App) applyProxyLocaleArgs(args []string, proxyID string, resolvedProxyConfig string, proxies []browser.Proxy, log *logger.Logger, profileID string) ([]string, string) {
 	proxyID = strings.TrimSpace(proxyID)
 	if proxyID == "" {

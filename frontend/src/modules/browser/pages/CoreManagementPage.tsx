@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Settings, Edit2, Download, CheckCircle } from 'lucide-react'
+import { FolderOpen, Settings, Edit2, Download, CheckCircle, RefreshCw } from 'lucide-react'
 import { Badge, Button, Card, ConfirmModal, FormItem, Input, Modal, Table, Textarea, toast } from '../../../shared/components'
 import type { TableColumn } from '../../../shared/components/Table'
-import type { BrowserSettings, BrowserCoreExtended, BrowserProxy } from '../types'
-import { fetchBrowserCores, deleteBrowserCore, setDefaultBrowserCore, validateBrowserCorePath, openCorePath, fetchBrowserSettings, saveBrowserSettings, fetchCoreExtendedInfo, fetchBrowserProxies, fetchBuiltinCores, downloadBuiltinCore, type BuiltinCoreSource } from '../api'
+import type { BrowserSettings, BrowserCoreExtended, BrowserProxy, CoreKind } from '../types'
+import { fetchBrowserCores, deleteBrowserCore, setDefaultBrowserCore, validateBrowserCorePath, openCorePath, fetchBrowserSettings, saveBrowserSettings, fetchCoreExtendedInfo, fetchBrowserProxies, fetchBuiltinCores, refreshBuiltinCores, downloadBuiltinCore, type BuiltinCoreSource } from '../api'
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 
 interface CoreDisplayInfo {
@@ -15,6 +15,17 @@ interface CoreDisplayInfo {
   pathMessage: string
   chromeVersion: string
   instanceCount: number
+  coreKind: CoreKind
+}
+
+const CORE_KIND_LABEL: Record<CoreKind, string> = {
+  chrome: '标准 Chrome',
+  clearcote: 'Clearcote 指纹',
+}
+
+const CORE_KIND_HINT: Record<CoreKind, string> = {
+  chrome: '不支持指纹开关，时区与反检测通过 CDP 注入',
+  clearcote: '引擎级指纹与时区，原生启动参数生效，无 JS 注入',
 }
 
 export function CoreManagementPage() {
@@ -47,6 +58,7 @@ export function CoreManagementPage() {
   const [downloadProgress, setDownloadProgress] = useState<{ phase: string; progress: number; message: string } | null>(null)
   const [proxies, setProxies] = useState<BrowserProxy[]>([])
   const [builtinCores, setBuiltinCores] = useState<BuiltinCoreSource[]>([])
+  const [refreshingBuiltin, setRefreshingBuiltin] = useState(false)
   const [downloadingBuiltinId, setDownloadingBuiltinId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -79,14 +91,14 @@ export function CoreManagementPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // 并行加载设置、内核列表、扩展信息和内置内核
-      const [settingsData, coreList, extendedInfo, builtinList] = await Promise.all([
+      // 内置内核清单可能需要请求远程，单独加载，不阻塞本地内核列表渲染
+      fetchBuiltinCores().then(setBuiltinCores)
+      // 并行加载设置、内核列表和扩展信息
+      const [settingsData, coreList, extendedInfo] = await Promise.all([
         fetchBrowserSettings(),
         fetchBrowserCores(),
         fetchCoreExtendedInfo(),
-        fetchBuiltinCores(),
       ])
-      setBuiltinCores(builtinList)
 
       setSettings(settingsData)
 
@@ -108,6 +120,7 @@ export function CoreManagementPage() {
             pathMessage: result.message,
             chromeVersion: extended?.chromeVersion || '',
             instanceCount: extended?.instanceCount || 0,
+            coreKind: extended?.coreKind || 'chrome',
           }
         })
       )
@@ -130,6 +143,16 @@ export function CoreManagementPage() {
       title: 'Chrome 版本',
       width: '130px',
       render: (val) => val || '-',
+    },
+    {
+      key: 'coreKind',
+      title: '类型',
+      width: '120px',
+      render: (val: CoreKind) => (
+        <span title={CORE_KIND_HINT[val]}>
+          <Badge variant={val === 'clearcote' ? 'info' : 'default'}>{CORE_KIND_LABEL[val]}</Badge>
+        </span>
+      ),
     },
     {
       key: 'instanceCount',
@@ -224,6 +247,16 @@ export function CoreManagementPage() {
     if (downloadForm.proxyMode === 'direct') return '__direct__'
     const proxyProfile = proxies.find(p => p.proxyId === downloadForm.proxyId)
     return proxyProfile?.proxyConfig || downloadForm.proxyId
+  }
+
+  // 从远程刷新内置内核清单
+  const handleRefreshBuiltinCores = async () => {
+    setRefreshingBuiltin(true)
+    try {
+      setBuiltinCores(await refreshBuiltinCores())
+    } finally {
+      setRefreshingBuiltin(false)
+    }
   }
 
   // 下载内置内核
@@ -409,6 +442,13 @@ export function CoreManagementPage() {
       }} title="下载内核" width="520px">
         <div className="space-y-4">
           {/* 内置内核列表 */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--color-text-muted)]">内核列表每日自动同步最新版本</span>
+            <Button size="sm" variant="ghost" onClick={handleRefreshBuiltinCores} loading={refreshingBuiltin} disabled={downloadProgress !== null}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              刷新列表
+            </Button>
+          </div>
           <div className="space-y-2">
             {builtinCores.map(core => (
               <div key={core.id} className="flex items-center justify-between p-3 border border-[var(--color-border-default)] rounded-md bg-[var(--color-bg-primary)]">
@@ -416,6 +456,7 @@ export function CoreManagementPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-[var(--color-text-primary)]">{core.name}</span>
                     <Badge variant="default">{core.version}</Badge>
+                    <Badge variant={core.kind === 'clearcote' ? 'info' : 'default'}>{CORE_KIND_LABEL[core.kind] || core.kind}</Badge>
                     {core.installed && <Badge variant="success">已安装</Badge>}
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)] mt-1">{core.description}</p>

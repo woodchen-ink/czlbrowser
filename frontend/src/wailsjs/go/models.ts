@@ -61,6 +61,7 @@ export namespace backend {
 	    id: string;
 	    name: string;
 	    version: string;
+	    kind: string;
 	    description: string;
 	    installed: boolean;
 	
@@ -73,6 +74,7 @@ export namespace backend {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.version = source["version"];
+	        this.kind = source["kind"];
 	        this.description = source["description"];
 	        this.installed = source["installed"];
 	    }
@@ -367,6 +369,7 @@ export namespace browser {
 	    coreId: string;
 	    chromeVersion: string;
 	    instanceCount: number;
+	    coreKind: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CoreExtendedInfo(source);
@@ -377,6 +380,7 @@ export namespace browser {
 	        this.coreId = source["coreId"];
 	        this.chromeVersion = source["chromeVersion"];
 	        this.instanceCount = source["instanceCount"];
+	        this.coreKind = source["coreKind"];
 	    }
 	}
 	export class CoreValidateResult {
