@@ -202,7 +202,13 @@ jobs:
         run: |
           $tag = '${{ steps.version.outputs.tag }}'
           $file = 'publish/output/${{ steps.version.outputs.assetName }}'
-          gh release create $tag $file -R $env:RELEASES_REPO --title "CZL Browser ${{ steps.version.outputs.fullVersion }}" --notes "Windows x64 安装包，供应用内在线更新使用。" --latest
+          # 重跑时 Release 已存在，改为覆盖上传，保证步骤可重入
+          gh release view $tag -R $env:RELEASES_REPO 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $file -R $env:RELEASES_REPO --clobber
+          } else {
+            gh release create $tag $file -R $env:RELEASES_REPO --title "CZL Browser ${{ steps.version.outputs.fullVersion }}" --notes "Windows x64 安装包，供应用内在线更新使用。" --latest
+          }
           if ($LASTEXITCODE -ne 0) { throw '公开仓库 Release 发布失败' }
 
       - name: Sign and publish update manifest
