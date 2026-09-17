@@ -169,6 +169,12 @@ export function TestProxyRealConnectivity(arg1:string):Promise<backend.ProxyTest
 
 export function TriggerGC():Promise<void>;
 
+export function UpdateCheck():Promise<backend.UpdateCheckResult>;
+
+export function UpdateDownload():Promise<void>;
+
 export function UpdateGroup(arg1:string,arg2:browser.GroupInput):Promise<browser.Group>;
+
+export function UpdateInstall():Promise<void>;
 
 export function ValidateProxyConfig(arg1:string,arg2:string):Promise<backend.ProxyValidationResult>;

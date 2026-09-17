@@ -98,7 +98,7 @@ func (a *App) startup(ctx context.Context) {
 
 	log := logger.New("App")
 	log.Info("应用启动中...",
-		logger.F("version", "1.0.0"),
+		logger.F("version", AppVersion),
 		logger.F("max_memory_mb", cfg.Runtime.MaxMemoryMB),
 		logger.F("gc_percent", cfg.Runtime.GCPercent),
 	)
@@ -337,7 +337,7 @@ func (a *App) GetDashboardStats() map[string]interface{} {
 }
 
 func (a *App) GetAppConfig() map[string]interface{} {
-	return map[string]interface{}{"name": a.config.App.Name, "version": "1.0.0"}
+	return map[string]interface{}{"name": a.config.App.Name, "version": AppVersion}
 }
 
 func (a *App) GetMemoryStats() map[string]interface{} {

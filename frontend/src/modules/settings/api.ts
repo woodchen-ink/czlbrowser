@@ -50,3 +50,48 @@ export async function importSystemConfig(resetFirst: boolean): Promise<BackupAct
   return (await bindings.BackupImportPackage(resetFirst)) || {}
 }
 
+
+export interface UpdateCheckResult {
+  currentVersion: string
+  latestVersion: string
+  hasUpdate: boolean
+  devBuild: boolean
+  changelog: string
+  publishedAt: string
+  size: number
+  downloaded: boolean
+  downloading: boolean
+  checkedAt: string
+}
+
+export interface UpdateProgress {
+  phase: 'downloading' | 'ready' | 'error'
+  progress: number
+  downloaded: number
+  total: number
+  message: string
+}
+
+export async function checkAppUpdate(): Promise<UpdateCheckResult> {
+  const bindings: any = await getBindings()
+  if (!bindings?.UpdateCheck) {
+    throw new Error('当前环境不支持检查更新')
+  }
+  return await bindings.UpdateCheck()
+}
+
+export async function downloadAppUpdate(): Promise<void> {
+  const bindings: any = await getBindings()
+  if (!bindings?.UpdateDownload) {
+    throw new Error('当前环境不支持下载更新')
+  }
+  await bindings.UpdateDownload()
+}
+
+export async function installAppUpdate(): Promise<void> {
+  const bindings: any = await getBindings()
+  if (!bindings?.UpdateInstall) {
+    throw new Error('当前环境不支持安装更新')
+  }
+  await bindings.UpdateInstall()
+}

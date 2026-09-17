@@ -25,6 +25,7 @@ import { QuickLaunchModal } from './modules/browser/components/QuickLaunchModal'
 import { useNotificationStore } from './store/notificationStore'
 import { useBackupStore } from './store/backupStore'
 import { useAuthStore } from './store/authStore'
+import { useUpdateStore } from './store/updateStore'
 
 function useWailsNotifications() {
   const addNotification = useNotificationStore((s) => s.addNotification)
@@ -72,6 +73,40 @@ function useWailsNotifications() {
       offBridgeDied?.()
     }
   }, [addNotification])
+}
+
+// 登录后静默检查一次更新，之后每 6 小时检查一次；发现新版本时通过通知中心提示（每个版本只提示一次）
+const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000
+
+function useAppUpdate() {
+  const addNotification = useNotificationStore((s) => s.addNotification)
+  const check = useUpdateStore((s) => s.check)
+  const setProgress = useUpdateStore((s) => s.setProgress)
+
+  useEffect(() => {
+    const runtime = (window as any).runtime
+    const off = runtime?.EventsOn?.('update:progress', setProgress)
+
+    let notifiedVersion = ''
+    const run = async () => {
+      const result = await check()
+      if (result?.hasUpdate && result.latestVersion !== notifiedVersion) {
+        notifiedVersion = result.latestVersion
+        addNotification({
+          type: 'info',
+          title: '发现新版本',
+          message: `CZL Browser ${result.latestVersion} 已发布，可在「系统设置」中下载安装`,
+        })
+      }
+    }
+    run()
+    const timer = window.setInterval(run, UPDATE_CHECK_INTERVAL)
+
+    return () => {
+      off?.()
+      window.clearInterval(timer)
+    }
+  }, [addNotification, check, setProgress])
 }
 
 function useAuthEvents() {
@@ -203,6 +238,7 @@ function CloseConfirmModal() {
 
 function AuthenticatedApp() {
   useWailsNotifications()
+  useAppUpdate()
   const [quickLaunchOpen, setQuickLaunchOpen] = useState(false)
 
   useEffect(() => {

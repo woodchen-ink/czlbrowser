@@ -4,6 +4,7 @@ import { Card, Button, ThemeSwitcher, toast, Modal, Progress } from '../../share
 import { initializeSystemData, exportSystemConfig, importSystemConfig } from './api'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { useBackupStore } from '../../store/backupStore'
+import { UpdateCard } from './UpdateCard'
 
 interface BackupExportProgress {
   phase: string
@@ -259,6 +260,8 @@ export function SettingsPage() {
       <div>
         <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">设置</h1>
       </div>
+
+      <UpdateCard />
 
       {/* 主题设置 */}
       <Card title="主题">

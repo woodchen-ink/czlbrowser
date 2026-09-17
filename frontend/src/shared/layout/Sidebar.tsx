@@ -32,6 +32,7 @@ import { useLayoutStore } from '../../store/layoutStore'
 import { projectConfig, navigationConfig } from '../../config'
 import { useAuthStore } from '../../store/authStore'
 import { useNotificationStore, type Notification } from '../../store/notificationStore'
+import { useUpdateStore } from '../../store/updateStore'
 
 // 导入应用logo
 import logoImage from '../../resources/images/logo.png'
@@ -170,6 +171,7 @@ export function Sidebar() {
   const location = useLocation()
   const { sidebarCollapsed, toggleSidebar } = useLayoutStore()
   const { state: authState, logout } = useAuthStore()
+  const hasUpdate = useUpdateStore((s) => !!s.result?.hasUpdate)
   const user = authState.user
   const [showNotifications, setShowNotifications] = useState(false)
   const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotificationStore()
@@ -265,7 +267,12 @@ export function Sidebar() {
                         : 'px-3 py-2.5 gap-3'
                     )}
                   >
-                    <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                    <span className="relative flex-shrink-0">
+                      <Icon className="w-[18px] h-[18px]" />
+                      {item.path === '/settings' && hasUpdate && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--color-error)]" title="有新版本" />
+                      )}
+                    </span>
                     {!sidebarCollapsed && (
                       <span className="text-sm font-medium truncate">{item.name}</span>
                     )}

@@ -22,6 +22,10 @@ concurrency:
 jobs:
   build-windows:
     runs-on: windows-latest
+    env:
+      # 私有仓库的 Release 普通用户无法下载，安装包同步发布到公开仓库供在线更新使用
+      RELEASES_REPO: woodchen-ink/czlbrowser-releases
+      HAS_RELEASES_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -92,8 +96,9 @@ jobs:
           "assetName=$asset"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "Version: $full  Tag: $tag  Asset: $asset"
 
+      # 版本号编进 exe，客户端据此判断是否有新版本；本地构建保持 dev，不提示更新
       - name: Wails build
-        run: wails build -platform windows/amd64 -trimpath
+        run: wails build -platform windows/amd64 -trimpath -ldflags "-X czl-browser/backend.AppVersion=${{ steps.version.outputs.fullVersion }}"
 
       - name: Verify build output
         shell: pwsh
@@ -184,3 +189,73 @@ jobs:
           files: publish/output/${{ steps.version.outputs.assetName }}
           draft: false
           prerelease: false
+
+      # ---------------- 在线更新发布 ----------------
+      # 1. 安装包发布到公开仓库 Release；2. 生成清单并用 Ed25519 私钥签名；
+      # 3. latest.json 提交到公开仓库 main 分支并 purge jsDelivr。
+      # 未配置 RELEASES_REPO_TOKEN 时整段跳过，不影响私有仓库的构建与发布。
+      - name: Publish installer to public releases repo
+        if: env.HAS_RELEASES_TOKEN == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          $tag = '${{ steps.version.outputs.tag }}'
+          $file = 'publish/output/${{ steps.version.outputs.assetName }}'
+          gh release create $tag $file -R $env:RELEASES_REPO --title "CZL Browser ${{ steps.version.outputs.fullVersion }}" --notes "Windows x64 安装包，供应用内在线更新使用。" --latest
+          if ($LASTEXITCODE -ne 0) { throw '公开仓库 Release 发布失败' }
+
+      - name: Sign and publish update manifest
+        if: env.HAS_RELEASES_TOKEN == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          COMMIT_MESSAGES: ${{ toJSON(github.event.commits.*.message) }}
+        run: |
+          if (-not $env:UPDATE_SIGNING_KEY) { throw '未配置 UPDATE_SIGNING_KEY，无法签名更新清单' }
+          $tag = '${{ steps.version.outputs.tag }}'
+          $asset = '${{ steps.version.outputs.assetName }}'
+          $file = "publish/output/$asset"
+
+          # 更新说明：本次 push 包含的提交标题；手动触发时取 HEAD 提交标题
+          $lines = @()
+          try { $lines = @(($env:COMMIT_MESSAGES | ConvertFrom-Json) | Where-Object { $_ } | ForEach-Object { ($_ -split "`n")[0].Trim() }) } catch {}
+          if ($lines.Count -eq 0) { $lines = @(git log -1 --pretty=%s) }
+          $changelog = ($lines | ForEach-Object { "- $_" }) -join "`n"
+
+          $urls = @("https://github.com/$($env:RELEASES_REPO)/releases/download/$tag/$asset")
+
+          $manifest = [ordered]@{
+            version      = '${{ steps.version.outputs.fullVersion }}'
+            platform     = 'windows-x64'
+            publishedAt  = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+            changelog    = $changelog
+            fileName     = $asset
+            size         = (Get-Item $file).Length
+            sha256       = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
+            downloadUrls = @($urls)
+          }
+          New-Item -ItemType Directory -Force -Path 'publish/update' | Out-Null
+          [IO.File]::WriteAllText("$PWD/publish/update/manifest.json", ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+
+          go run ./tools/updatesign sign -in publish/update/manifest.json -out publish/update/latest.json
+          if ($LASTEXITCODE -ne 0) { throw '清单签名失败' }
+          # 用客户端同一套验签逻辑校验，防止私钥与内置公钥不匹配时发布出客户端无法识别的清单
+          $env:UPDATE_ENVELOPE_FILE = "$PWD/publish/update/latest.json"
+          go test ./backend/internal/update/ -run '^TestReleaseEnvelope$' -count=1 -v
+          if ($LASTEXITCODE -ne 0) { throw '清单验签失败：UPDATE_SIGNING_KEY 与内置公钥不匹配' }
+
+          $content = [Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD/publish/update/latest.json"))
+          $sha = gh api "repos/$($env:RELEASES_REPO)/contents/latest.json?ref=main" --jq .sha 2>$null
+          $hasFile = ($LASTEXITCODE -eq 0) -and $sha
+          $ghArgs = @('api', '-X', 'PUT', "repos/$($env:RELEASES_REPO)/contents/latest.json",
+            '-f', "message=release: $tag", '-f', "content=$content", '-f', 'branch=main')
+          if ($hasFile) { $ghArgs += @('-f', "sha=$sha") }
+          gh @ghArgs | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'latest.json 提交失败' }
+
+          try {
+            Invoke-WebRequest -UseBasicParsing -TimeoutSec 30 "https://purge.jsdelivr.net/gh/$($env:RELEASES_REPO)@main/latest.json" | Out-Null
+          } catch { Write-Warning "jsDelivr purge 失败: $_" }
+          Write-Host "更新清单已发布: $tag"

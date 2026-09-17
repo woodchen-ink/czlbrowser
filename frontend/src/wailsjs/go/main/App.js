@@ -326,8 +326,20 @@ export function TriggerGC() {
   return window['go']['main']['App']['TriggerGC']();
 }
 
+export function UpdateCheck() {
+  return window['go']['main']['App']['UpdateCheck']();
+}
+
+export function UpdateDownload() {
+  return window['go']['main']['App']['UpdateDownload']();
+}
+
 export function UpdateGroup(arg1, arg2) {
   return window['go']['main']['App']['UpdateGroup'](arg1, arg2);
+}
+
+export function UpdateInstall() {
+  return window['go']['main']['App']['UpdateInstall']();
 }
 
 export function ValidateProxyConfig(arg1, arg2) {

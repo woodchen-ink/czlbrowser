@@ -21,6 +21,7 @@ Unicode True
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
 
 !macro WriteCloseProcessScript HANDLE
   FileWrite ${HANDLE} "param([string]$$InstallDir, [string]$$ExcludePath)$\r$\n"
@@ -71,7 +72,7 @@ retry_powershell:
     Goto done
   ${EndIf}
 
-  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "检测到旧版本仍有进程占用安装目录。$\r$\n$\r$\n目录：$INSTDIR$\r$\n$\r$\n点击“重试”将再次尝试关闭残留进程，点击“取消”将终止本次安装。" IDRETRY retry_powershell IDCANCEL install_abort
+  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "检测到旧版本仍有进程占用安装目录。$\r$\n$\r$\n目录：$INSTDIR$\r$\n$\r$\n点击“重试”将再次尝试关闭残留进程，点击“取消”将终止本次安装。" /SD IDCANCEL IDRETRY retry_powershell IDCANCEL install_abort
 
 install_abort:
   Abort "安装已取消：安装目录中的旧进程仍未退出。"
@@ -144,16 +145,44 @@ SetCompressor /SOLID lzma
 
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
+; 应用内在线更新以 /S /RELAUNCH /WAITPID=<pid> 启动安装器：
+; 先等待旧进程正常退出（数据库落盘、实例关闭），再走常规的残留进程清理与文件覆盖。
+Function WaitForUpdaterExit
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/WAITPID=" $R1
+  ${If} ${Errors}
+  ${OrIf} $R1 == ""
+    Return
+  ${EndIf}
+  IfFileExists "${POWERSHELL_EXE}" 0 wait_fallback
+  nsExec::Exec '"${POWERSHELL_EXE}" -NoProfile -ExecutionPolicy Bypass -Command "Wait-Process -Id $R1 -Timeout 60 -ErrorAction SilentlyContinue"'
+  Pop $R2
+  Return
+wait_fallback:
+  Sleep 5000
+FunctionEnd
+
+Function .onInstSuccess
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/RELAUNCH" $R1
+  ${IfNot} ${Errors}
+    Exec '"$INSTDIR\${PRODUCT_EXE}"'
+  ${EndIf}
+FunctionEnd
+
 ; 检测旧版管理员安装（C:\Program Files），提示先卸载。
 ; 旧版卸载器只删除其安装目录内文件；%LOCALAPPDATA%\CZL Browser 与 %APPDATA%\CZL Browser 中的数据
 ; 由新版首次启动时迁移到安装根目录。
 Function .onInit
+  Call WaitForUpdaterExit
   ReadRegStr $R0 HKLM "${UNINSTALL_KEY}" "InstallLocation"
   ${If} $R0 == ""
     Return
   ${EndIf}
   IfFileExists "$R0\Uninstall.exe" 0 legacy_done
-  MessageBox MB_YESNO|MB_ICONQUESTION "检测到旧版本安装在：$\r$\n$R0$\r$\n$\r$\n新版本改为按用户安装到：$\r$\n${INSTALL_DIR}$\r$\n$\r$\n是否先卸载旧版本？需要管理员授权。$\r$\n卸载过程询问是否清理数据时请选择“否”，实例数据会在新版首次启动时自动迁移。" IDNO legacy_done
+  MessageBox MB_YESNO|MB_ICONQUESTION "检测到旧版本安装在：$\r$\n$R0$\r$\n$\r$\n新版本改为按用户安装到：$\r$\n${INSTALL_DIR}$\r$\n$\r$\n是否先卸载旧版本？需要管理员授权。$\r$\n卸载过程询问是否清理数据时请选择“否”，实例数据会在新版首次启动时自动迁移。" /SD IDNO IDNO legacy_done
   ; 旧卸载器清单要求管理员，需经 ShellExecute 触发 UAC；_?= 让其原地运行以便等待结束
   ExecShellWait "" "$R0\Uninstall.exe" "_?=$R0"
 legacy_done:

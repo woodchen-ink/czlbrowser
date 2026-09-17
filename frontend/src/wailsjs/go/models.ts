@@ -217,6 +217,36 @@ export namespace backend {
 	        this.filePath = source["filePath"];
 	    }
 	}
+	export class UpdateCheckResult {
+	    currentVersion: string;
+	    latestVersion: string;
+	    hasUpdate: boolean;
+	    devBuild: boolean;
+	    changelog: string;
+	    publishedAt: string;
+	    size: number;
+	    downloaded: boolean;
+	    downloading: boolean;
+	    checkedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.hasUpdate = source["hasUpdate"];
+	        this.devBuild = source["devBuild"];
+	        this.changelog = source["changelog"];
+	        this.publishedAt = source["publishedAt"];
+	        this.size = source["size"];
+	        this.downloaded = source["downloaded"];
+	        this.downloading = source["downloading"];
+	        this.checkedAt = source["checkedAt"];
+	    }
+	}
 
 }
 
