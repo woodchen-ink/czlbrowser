@@ -90,14 +90,25 @@ func main() {
 
 	log.Printf("应用根目录: %s (dev=%v)", appRoot, isDevMode)
 
-	// 确定配置文件路径：dev 模式使用项目目录，生产模式使用 %APPDATA%
-	var configPath string
-	if isDevMode {
-		configPath = filepath.Join(appRoot, "config.yaml")
-	} else {
-		configPath = backend.ConfigPath()
+	// 确定数据根与配置路径：dev 使用项目目录；生产统一收敛到安装根 %LOCALAPPDATA%\CZL\CZL Browser
+	dataRoot := appRoot
+	configPath := filepath.Join(appRoot, "config.yaml")
+	if !isDevMode {
+		root, err := backend.InstallRoot()
+		if err != nil {
+			log.Fatalf("解析安装根目录失败: %v", err)
+		}
+		moved, errs := backend.MigrateLegacyLayout(root)
+		for _, p := range moved {
+			log.Printf("已迁移旧版目录: %s", p)
+		}
+		for _, e := range errs {
+			log.Printf("迁移旧版目录失败: %v", e)
+		}
+		dataRoot = root
+		configPath = backend.ConfigPathIn(root)
 	}
-	log.Printf("配置文件路径: %s", configPath)
+	log.Printf("数据根目录: %s, 配置文件路径: %s", dataRoot, configPath)
 
 	// 加载配置（磁盘文件不存在时回退到嵌入默认配置）
 	cfg, err := backend.LoadConfig(configPath)
@@ -108,7 +119,7 @@ func main() {
 
 	// 创建应用实例
 	app := NewApp(appRoot)
-	app.SetDevMode(isDevMode)
+	app.SetLayout(isDevMode, dataRoot, configPath)
 
 	var wailsCtx context.Context
 

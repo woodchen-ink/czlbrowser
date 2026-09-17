@@ -81,12 +81,12 @@ type ManifestEntry struct {
 
 type BuildOptions struct {
 	// DataRoot 用户可写数据扫描根（data/database/logs/chrome 基于此定位）。
-	// 生产指向 %LOCALAPPDATA%/CZL Browser，dev 指向项目根。
+	// 生产指向 %LOCALAPPDATA%/CZL/CZL Browser，dev 指向项目根。
 	DataRoot string
 	// AppRoot 兼容旧调用：DataRoot 为空时回退使用（测试与历史路径）。
 	AppRoot string
 	// ConfigPath 主配置文件 config.yaml 的实际路径。
-	// 生产 config 落在 %APPDATA% 而非数据根，故单独指定；为空时回退到 DataRoot/config.yaml。
+	// 生产 config 落在 <安装根>/config 子目录，故单独指定；为空时回退到 DataRoot/config.yaml。
 	ConfigPath string
 	Config     *config.Config
 }
@@ -110,7 +110,7 @@ func BuildScope(opts BuildOptions) (Scope, error) {
 		cfg = config.DefaultConfig()
 	}
 
-	// config.yaml 在生产环境与数据根分离（位于 %APPDATA%），故优先使用显式路径。
+	// config.yaml 在生产环境位于 <安装根>/config 子目录，故优先使用显式路径。
 	configSourcePath := strings.TrimSpace(opts.ConfigPath)
 	if configSourcePath == "" {
 		configSourcePath = resolvePath(appRootAbs, "config.yaml")

@@ -167,32 +167,26 @@ type InterceptorConfig struct {
 	SensitiveFields []string `yaml:"sensitive_fields"` // 敏感字段（脱敏）
 }
 
-// ConfigDir 返回用户配置目录 (%APPDATA%\CZL Browser)。
-// 生产环境下 config.yaml 保存在此目录，安装目录不暴露配置文件。
-func ConfigDir() string {
-	appData := os.Getenv("APPDATA")
-	if appData == "" {
-		appData, _ = os.UserConfigDir()
-	}
-	return filepath.Join(appData, "CZL Browser")
-}
+// ProductDirName 为安装根目录下的产品目录名，与安装器产品名一致，定名后不改。
+const ProductDirName = "CZL Browser"
 
-// ConfigPath 返回用户配置文件完整路径。
-func ConfigPath() string {
-	return filepath.Join(ConfigDir(), "config.yaml")
-}
+// VendorDirName 为 CZL 统一厂商目录名。
+const VendorDirName = "CZL"
 
-// DataDir 返回用户可写数据根目录 (%LOCALAPPDATA%\CZL Browser)。
-// 生产环境下浏览器用户数据 / 内核 / 数据库 / 日志均落在此目录，
-// 避免写入受 UAC 保护的安装目录（如 C:\Program Files）导致 Chromium 沙箱启动失败。
-// 选用 LOCALAPPDATA 而非漫游 APPDATA：浏览器用户数据体量大且本机绑定，不应参与漫游同步。
-func DataDir() string {
-	localAppData := os.Getenv("LOCALAPPDATA")
+// InstallRoot 返回生产环境安装根目录 (%LOCALAPPDATA%\CZL\CZL Browser)。
+// 程序文件、配置、数据库、浏览器用户数据、内核与日志全部收敛于此，按用户安装、不触发 UAC。
+// 不使用漫游 %APPDATA%；LOCALAPPDATA 缺失时直接报错，不回退到工作目录或 exe 目录。
+func InstallRoot() (string, error) {
+	localAppData := strings.TrimSpace(os.Getenv("LOCALAPPDATA"))
 	if localAppData == "" {
-		// 兜底：UserConfigDir 指向漫游 APPDATA，仍可用但非首选
-		localAppData, _ = os.UserConfigDir()
+		return "", fmt.Errorf("1001 LOCALAPPDATA not set")
 	}
-	return filepath.Join(localAppData, "CZL Browser")
+	return filepath.Join(localAppData, VendorDirName, ProductDirName), nil
+}
+
+// ConfigPathIn 返回安装根目录下的主配置文件路径 (<root>\config\config.yaml)。
+func ConfigPathIn(root string) string {
+	return filepath.Join(root, "config", "config.yaml")
 }
 
 // LoadFromEmbedded 从编译时嵌入的默认配置加载。

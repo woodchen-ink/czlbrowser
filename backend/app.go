@@ -35,9 +35,9 @@ type App struct {
 	singboxMgr     *proxy.SingBoxManager
 	speedScheduler *browser.ProxySpeedScheduler
 	authMgr        *auth.Manager
-	appRoot        string // 应用安装根目录（exe 目录），仅用于定位随包分发的只读资源（bin/xray.exe 等）
-	dataRoot       string // 用户可写数据根目录（dev: 项目根；生产: %LOCALAPPDATA%/CZL Browser），承载 data/chrome/db/logs
-	configPath     string // 配置文件路径（dev: appRoot/config.yaml, 生产: %APPDATA%/CZL Browser/config.yaml）
+	appRoot        string // 程序目录（exe 目录），仅用于定位随包分发的资源（bin/xray.exe 等）
+	dataRoot       string // 可写数据根目录（dev: 项目根；生产: 安装根 %LOCALAPPDATA%/CZL/CZL Browser），承载 data/chrome/logs
+	configPath     string // 配置文件路径（dev: appRoot/config.yaml, 生产: <安装根>/config/config.yaml）
 	devMode        bool   // 是否为开发模式
 
 	forceQuit        bool       // 强制退出标志，用于跳过 OnBeforeClose 的拦截
@@ -53,30 +53,24 @@ func NewApp(appRoot string) *App {
 	root := strings.TrimSpace(appRoot)
 	return &App{
 		appRoot:        root,
-		dataRoot:       root, // 默认与 appRoot 相同（dev）；生产模式在 SetDevMode 中重定向到 %LOCALAPPDATA%
+		dataRoot:       root, // 默认与 appRoot 相同（dev）；生产模式由 SetLayout 指向安装根目录
 		xrayBridgeRefs: make(map[string]string),
 	}
 }
 
-// SetDevMode 设置开发模式标志，影响配置文件与数据根目录的路径选择。
+// SetLayout 设置运行模式与目录布局，由 main 在启动前解析后注入。
 // dev: 配置与数据均落在项目根（appRoot）。
-// 生产: 配置走 %APPDATA%，可写数据（data/chrome/db/logs）走 %LOCALAPPDATA%，
-// 避免写入受 UAC 保护的安装目录导致 Chromium 沙箱启动失败。
-func (a *App) SetDevMode(dev bool) {
+// 生产: dataRoot 为安装根 %LOCALAPPDATA%\CZL\CZL Browser，配置位于其 config/ 子目录。
+func (a *App) SetLayout(dev bool, dataRoot, configPath string) {
 	a.devMode = dev
-	if dev {
-		a.configPath = a.resolveAppPath("config.yaml")
-		a.dataRoot = a.appRoot
-	} else {
-		a.configPath = config.ConfigPath()
-		a.dataRoot = config.DataDir()
-	}
+	a.dataRoot = dataRoot
+	a.configPath = configPath
 }
 
 // startup 应用启动时调用
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	// 配置读自 mainConfigPath（生产=%APPDATA%，dev=项目根）；数据目录与 config 分离。
+	// 配置读自 mainConfigPath（生产=<安装根>/config，dev=项目根）。
 	cfg, err := LoadConfig(a.mainConfigPath())
 	if err != nil {
 		cfg = config.DefaultConfig()

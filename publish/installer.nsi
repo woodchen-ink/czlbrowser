@@ -13,7 +13,10 @@ Unicode True
 !define PRODUCT_NAME    "CZL Browser"
 !define PRODUCT_EXE     "czl-browser.exe"
 !define UNINSTALL_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\CZLBrowser"
-!define INSTALL_DIR     "$PROGRAMFILES64\CZL Browser"
+; 按用户安装到 CZL 统一厂商目录，不触发 UAC；安装根目录固定，不提供目录选择页
+!define INSTALL_DIR     "$LOCALAPPDATA\CZL\CZL Browser"
+; 旧版配置位置：存在时不写入默认配置，留给首次启动迁移
+!define LEGACY_CONFIG   "$APPDATA\CZL Browser\config.yaml"
 !define POWERSHELL_EXE  "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
 
 !include "MUI2.nsh"
@@ -122,15 +125,13 @@ FunctionEnd
 Name "${PRODUCT_NAME} ${VERSION}"
 OutFile "..\publish\output\CZLBrowser-Setup-${VERSION}.exe"
 InstallDir "${INSTALL_DIR}"
-InstallDirRegKey HKLM "${UNINSTALL_KEY}" "InstallLocation"
-RequestExecutionLevel admin
+RequestExecutionLevel user
 SetCompressor /SOLID lzma
 
 !define MUI_ICON "..\build\windows\icon.ico"
 !define MUI_UNICON "..\build\windows\icon.ico"
 
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_DIRECTORY
 !define MUI_COMPONENTSPAGE_SMALLDESC
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
@@ -143,26 +144,45 @@ SetCompressor /SOLID lzma
 
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
+; 检测旧版管理员安装（C:\Program Files），提示先卸载。
+; 旧版卸载器只删除其安装目录内文件；%LOCALAPPDATA%\CZL Browser 与 %APPDATA%\CZL Browser 中的数据
+; 由新版首次启动时迁移到安装根目录。
+Function .onInit
+  ReadRegStr $R0 HKLM "${UNINSTALL_KEY}" "InstallLocation"
+  ${If} $R0 == ""
+    Return
+  ${EndIf}
+  IfFileExists "$R0\Uninstall.exe" 0 legacy_done
+  MessageBox MB_YESNO|MB_ICONQUESTION "检测到旧版本安装在：$\r$\n$R0$\r$\n$\r$\n新版本改为按用户安装到：$\r$\n${INSTALL_DIR}$\r$\n$\r$\n是否先卸载旧版本？需要管理员授权。$\r$\n卸载过程询问是否清理数据时请选择“否”，实例数据会在新版首次启动时自动迁移。" IDNO legacy_done
+  ; 旧卸载器清单要求管理员，需经 ShellExecute 触发 UAC；_?= 让其原地运行以便等待结束
+  ExecShellWait "" "$R0\Uninstall.exe" "_?=$R0"
+legacy_done:
+FunctionEnd
+
 Section "CZL Browser (required)" SecMain
   SectionIn RO
   Call CloseInstalledProcesses
   SetOutPath "$INSTDIR"
   File "${STAGINGDIR}\${PRODUCT_EXE}"
 !if /FileExists "${STAGINGDIR}\config.yaml"
-  IfFileExists "$INSTDIR\config.yaml" +2 0
+  ; 仅首次安装写入默认配置：已有新版配置或存在待迁移的旧版配置时跳过
+  ${IfNot} ${FileExists} "$INSTDIR\config\config.yaml"
+  ${AndIfNot} ${FileExists} "${LEGACY_CONFIG}"
+    SetOutPath "$INSTDIR\config"
     File "${STAGINGDIR}\config.yaml"
+    SetOutPath "$INSTDIR"
+  ${EndIf}
 !else
   !echo "Warning: ${STAGINGDIR}\\config.yaml not found, installer will use runtime defaults."
 !endif
-  CreateDirectory "$INSTDIR\data"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName"     "${PRODUCT_NAME}"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion"  "${VERSION}"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "Publisher"       "CZL Browser Team"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "UninstallString" "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon"     "$INSTDIR\${PRODUCT_EXE}"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "NoModify"        "1"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "NoRepair"        "1"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName"     "${PRODUCT_NAME}"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion"  "${VERSION}"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher"       "CZL Browser Team"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" "$INSTDIR\Uninstall.exe"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon"     "$INSTDIR\${PRODUCT_EXE}"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "NoModify"        "1"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "NoRepair"        "1"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_EXE}"
@@ -203,30 +223,30 @@ SectionEnd
 Section "Uninstall"
   Call un.CloseInstalledProcesses
 
+  ; 程序文件与快捷方式总是移除；config/data/chrome/logs 默认保留
   Delete /REBOOTOK "$INSTDIR\${PRODUCT_EXE}"
-  Delete /REBOOTOK "$INSTDIR\config.yaml"
-  Delete /REBOOTOK "$INSTDIR\proxies.yaml"
   Delete /REBOOTOK "$INSTDIR\Uninstall.exe"
   RMDir /r /REBOOTOK "$INSTDIR\bin"
-  RMDir /r /REBOOTOK "$INSTDIR\chrome"
   Delete /REBOOTOK "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk"
   Delete /REBOOTOK "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk"
   RMDir /REBOOTOK "$SMPROGRAMS\${PRODUCT_NAME}"
   Delete /REBOOTOK "$DESKTOP\${PRODUCT_NAME}.lnk"
-  DeleteRegKey HKLM "${UNINSTALL_KEY}"
-  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "是否彻底清理所有用户数据？$\r$\n$\r$\n选择“是”将删除 data 目录（含数据库/实例数据）以及安装目录残留文件。$\r$\n此操作不可恢复。" IDYES un_remove_all_data IDNO un_keep_user_data
+  DeleteRegKey HKCU "${UNINSTALL_KEY}"
+  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "是否同时删除用户数据？$\r$\n$\r$\n选择“是”将删除 config、data（数据库/实例数据）、chrome（内核）与 logs 目录，此操作不可恢复。$\r$\n选择“否”保留这些数据，重新安装后可继续使用。" IDYES un_remove_all_data IDNO un_keep_user_data
 
 un_remove_all_data:
+  RMDir /r /REBOOTOK "$INSTDIR\config"
   RMDir /r /REBOOTOK "$INSTDIR\data"
+  RMDir /r /REBOOTOK "$INSTDIR\chrome"
   RMDir /r /REBOOTOK "$INSTDIR\logs"
   RMDir /r /REBOOTOK "$INSTDIR"
+  RMDir "$LOCALAPPDATA\CZL"
+  IfFileExists "$INSTDIR\." 0 un_done
+    MessageBox MB_ICONEXCLAMATION|MB_OK "检测到部分文件仍被占用，已标记为重启后自动删除。"
   Goto un_done
 
 un_keep_user_data:
   RMDir /REBOOTOK "$INSTDIR"
-  Goto un_done
 
 un_done:
-  IfFileExists "$INSTDIR\." 0 +2
-    MessageBox MB_ICONEXCLAMATION|MB_OK "检测到部分文件仍被占用，已标记为重启后自动删除。"
 SectionEnd

@@ -19,7 +19,7 @@ import (
 
 // resolveAppPath 将相对路径解析为可写数据绝对路径（基于 dataRoot）。
 // data/chrome/db/logs/snapshots 等用户可写数据均经此解析；
-// 生产环境 dataRoot 指向 %LOCALAPPDATA%，避免写入受保护安装目录。
+// 生产环境 dataRoot 指向安装根 %LOCALAPPDATA%/CZL/CZL Browser。
 // 随包分发的只读资源（bin/xray.exe 等）不走此函数，由各 Manager 基于 appRoot 解析。
 // 如果传入的已经是绝对路径则直接返回。
 func (a *App) resolveAppPath(p string) string {

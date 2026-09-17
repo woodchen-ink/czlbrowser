@@ -60,13 +60,19 @@ func DefaultConfig() *Config {
 	return appconfig.DefaultConfig()
 }
 
-func ConfigPath() string {
-	return appconfig.ConfigPath()
+// InstallRoot 返回生产环境安装根目录 (%LOCALAPPDATA%\CZL\CZL Browser)。
+func InstallRoot() (string, error) {
+	return appconfig.InstallRoot()
 }
 
-// DataDir 返回生产环境用户可写数据根目录 (%LOCALAPPDATA%\CZL Browser)。
-func DataDir() string {
-	return appconfig.DataDir()
+// ConfigPathIn 返回安装根目录下的主配置文件路径。
+func ConfigPathIn(root string) string {
+	return appconfig.ConfigPathIn(root)
+}
+
+// MigrateLegacyLayout 把旧版 %APPDATA% / %LOCALAPPDATA%\CZL Browser 布局搬迁到安装根目录。
+func MigrateLegacyLayout(root string) ([]string, []error) {
+	return appconfig.MigrateLegacyLayout(root)
 }
 
 func RunTray(cb TrayCallbacks) {

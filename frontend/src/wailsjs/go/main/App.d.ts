@@ -159,7 +159,7 @@ export function SaveBrowserProxies(arg1:Array<config.BrowserProxy>):Promise<void
 
 export function SaveBrowserSettings(arg1:browser.Settings):Promise<void>;
 
-export function SetDevMode(arg1:boolean):Promise<void>;
+export function SetLayout(arg1:boolean,arg2:string,arg3:string):Promise<void>;
 
 export function SetLogLevel(arg1:string):Promise<void>;
 

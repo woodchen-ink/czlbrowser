@@ -107,8 +107,8 @@ type ProfileConfig = config.BrowserProfileConfig
 // Manager 浏览器管理器
 type Manager struct {
 	Config           *config.Config
-	DataRoot         string // 用户可写数据根目录，chrome 内核与用户数据相对路径基于此解析（生产=%LOCALAPPDATA%/CZL Browser，dev=项目根）
-	ConfigPath       string // 主配置文件 config.yaml 实际路径（生产=%APPDATA%，dev=项目根）；DAO 未注入时的降级保存目标
+	DataRoot         string // 用户可写数据根目录，chrome 内核与用户数据相对路径基于此解析（生产=%LOCALAPPDATA%/CZL/CZL Browser，dev=项目根）
+	ConfigPath       string // 主配置文件 config.yaml 实际路径（生产=<安装根>/config，dev=项目根）；DAO 未注入时的降级保存目标
 	Profiles         map[string]*Profile
 	Mutex            sync.Mutex
 	BrowserProcesses map[string]*exec.Cmd
@@ -154,7 +154,7 @@ func (m *Manager) configSavePath() string {
 }
 
 // ResolveRelativePath 将相对路径解析为绝对路径（基于 DataRoot）。
-// chrome 内核目录与用户数据目录均为可写数据，经此解析到 %LOCALAPPDATA%（生产）。
+// chrome 内核目录与用户数据目录均为可写数据，经此解析到安装根 %LOCALAPPDATA%/CZL/CZL Browser（生产）。
 // 如果传入的已经是绝对路径则直接返回。
 func (m *Manager) ResolveRelativePath(p string) string {
 	if filepath.IsAbs(p) {
