@@ -2,7 +2,7 @@
 //
 // 发布链路：私有仓库 CI 构建安装包 → 发布到公开仓库 woodchen-ink/czlbrowser-releases 的 Release
 // → 用 Ed25519 私钥签名 latest.json 并提交到该仓库 main 分支。客户端只信任内置公钥验签通过的清单，
-// 因此清单经 raw 还是 jsDelivr 获取、安装包从哪个地址下载都不影响安全性。
+// 因此清单经 CZL Connect、raw 还是 jsDelivr 获取、安装包从哪个地址下载都不影响安全性。
 package update
 
 import (

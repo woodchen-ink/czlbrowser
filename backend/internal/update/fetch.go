@@ -9,8 +9,10 @@ import (
 	"time"
 )
 
-// ManifestURLs 清单地址：raw 更新即时，jsDelivr 国内可达性更好（CI 发布后会主动 purge）。
+// ManifestURLs 清单地址：CZL Connect 代理公开仓库 main 分支的 latest.json，国内直连可达，为主地址；
+// raw 与 jsDelivr 作兜底（CI 发布后会主动 purge jsDelivr）。三者内容相同且都需验签，取版本最高者。
 var ManifestURLs = []string{
+	"https://connect.czl.net/dl/czlbrowser/latest/update-manifest",
 	"https://raw.githubusercontent.com/woodchen-ink/czlbrowser-releases/main/latest.json",
 	"https://cdn.jsdelivr.net/gh/woodchen-ink/czlbrowser-releases@main/latest.json",
 }

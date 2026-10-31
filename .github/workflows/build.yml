@@ -192,7 +192,8 @@ jobs:
 
       # ---------------- 在线更新发布 ----------------
       # 1. 安装包发布到公开仓库 Release；2. 生成清单并用 Ed25519 私钥签名；
-      # 3. latest.json 提交到公开仓库 main 分支并 purge jsDelivr。
+      # 3. latest.json 提交到公开仓库 main 分支并 purge jsDelivr；CZL Connect (slug czlbrowser) 的
+      #    update-manifest 别名代理这份文件，windows 别名代理 Release 安装包。
       # 未配置 RELEASES_REPO_TOKEN 时整段跳过，不影响私有仓库的构建与发布。
       - name: Publish installer to public releases repo
         if: env.HAS_RELEASES_TOKEN == 'true'
@@ -230,7 +231,11 @@ jobs:
           if ($lines.Count -eq 0) { $lines = @(git log -1 --pretty=%s) }
           $changelog = ($lines | ForEach-Object { "- $_" }) -join "`n"
 
-          $urls = @("https://github.com/$($env:RELEASES_REPO)/releases/download/$tag/$asset")
+          # CZL Connect 代理固定 tag 的附件（国内可达）为主，GitHub 直链兜底
+          $urls = @(
+            "https://connect.czl.net/dl/czlbrowser/$tag/windows",
+            "https://github.com/$($env:RELEASES_REPO)/releases/download/$tag/$asset"
+          )
 
           $manifest = [ordered]@{
             version      = '${{ steps.version.outputs.fullVersion }}'
