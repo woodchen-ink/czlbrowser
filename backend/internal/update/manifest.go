@@ -1,8 +1,8 @@
 // Package update 实现应用自身的在线更新：拉取签名清单、下载校验安装包、启动静默安装。
 //
-// 发布链路：私有仓库 CI 构建安装包 → 发布到公开仓库 woodchen-ink/czlbrowser-releases 的 Release
-// → 用 Ed25519 私钥签名 latest.json 并提交到该仓库 main 分支。客户端只信任内置公钥验签通过的清单，
-// 因此清单经 CZL Connect、raw 还是 jsDelivr 获取、安装包从哪个地址下载都不影响安全性。
+// 发布链路：私有仓库 CI 构建安装包 → 用 Ed25519 私钥签名 latest.json → 二者作为附件发布到本仓库 Release
+// → CZL Connect 代理该 Release 对外提供。客户端只信任内置公钥验签通过的清单，
+// 因此清单经哪个地址获取、安装包从哪个地址下载都不影响安全性。
 package update
 
 import (
