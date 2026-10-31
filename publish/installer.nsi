@@ -2,6 +2,8 @@
 ; Usage: makensis /DVERSION=1.0.0 /DSTAGINGDIR=C:\path\to\staging installer.nsi
 
 Unicode True
+; 必须早于任何插件调用（nsExec 等），否则 makensis 报 "can't change compressor"
+SetCompressor /SOLID lzma
 
 !ifndef VERSION
   !define VERSION "1.0.0"
@@ -65,7 +67,10 @@ retry_powershell:
   FileClose $1
 
   DetailPrint "正在关闭安装目录中的残留进程: $INSTDIR"
-  ExecWait '"${POWERSHELL_EXE}" -NoProfile -ExecutionPolicy Bypass -File "$0" -InstallDir "$INSTDIR" -ExcludePath ""' $2
+  ; 在线更新时安装包位于 $INSTDIR\data\_update，必须排除自身，否则清理脚本会结束安装器；
+  ; nsExec 不弹 PowerShell 控制台窗口
+  nsExec::Exec '"${POWERSHELL_EXE}" -NoProfile -ExecutionPolicy Bypass -File "$0" -InstallDir "$INSTDIR" -ExcludePath "$EXEPATH"'
+  Pop $2
   Delete $0
 
   ${If} $2 == 0
@@ -79,9 +84,12 @@ install_abort:
 
 fallback_taskkill:
   DetailPrint "PowerShell 不可用，回退到 taskkill 清理主进程和代理进程..."
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM ${PRODUCT_EXE}' $2
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM xray.exe' $2
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM sing-box.exe' $2
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM ${PRODUCT_EXE}'
+  Pop $2
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM xray.exe'
+  Pop $2
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM sing-box.exe'
+  Pop $2
   Sleep 1500
 
 done:
@@ -101,7 +109,8 @@ retry_powershell:
   FileClose $1
 
   DetailPrint "正在关闭安装目录中的残留进程: $INSTDIR"
-  ExecWait '"${POWERSHELL_EXE}" -NoProfile -ExecutionPolicy Bypass -File "$0" -InstallDir "$INSTDIR" -ExcludePath "$INSTDIR\Uninstall.exe"' $2
+  nsExec::Exec '"${POWERSHELL_EXE}" -NoProfile -ExecutionPolicy Bypass -File "$0" -InstallDir "$INSTDIR" -ExcludePath "$INSTDIR\Uninstall.exe"'
+  Pop $2
   Delete $0
 
   ${If} $2 == 0
@@ -115,9 +124,12 @@ uninstall_abort:
 
 fallback_taskkill:
   DetailPrint "PowerShell 不可用，回退到 taskkill 清理主进程和代理进程..."
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM ${PRODUCT_EXE}' $2
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM xray.exe' $2
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM sing-box.exe' $2
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM ${PRODUCT_EXE}'
+  Pop $2
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM xray.exe'
+  Pop $2
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM sing-box.exe'
+  Pop $2
   Sleep 1500
 
 done:
@@ -127,7 +139,6 @@ Name "${PRODUCT_NAME} ${VERSION}"
 OutFile "..\publish\output\CZLBrowser-Setup-${VERSION}.exe"
 InstallDir "${INSTALL_DIR}"
 RequestExecutionLevel user
-SetCompressor /SOLID lzma
 
 !define MUI_ICON "..\build\windows\icon.ico"
 !define MUI_UNICON "..\build\windows\icon.ico"
