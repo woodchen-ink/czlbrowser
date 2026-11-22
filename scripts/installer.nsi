@@ -137,9 +137,10 @@ Section "Install"
   WriteRegDWORD HKCU "${REG_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${REG_KEY}" "NoRepair" 1
 
-  CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\卸载 ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
+  ; 开始菜单只放一个快捷方式, 与其它 CZL 应用一致; 卸载走 设置 → 应用。
+  ; 旧版本建的「CZL Browser」文件夹 (含卸载快捷方式) 顺手删掉
+  RMDir /r "$SMPROGRAMS\${APP_NAME}"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
 SectionEnd
 
 Function MakeDesktopShortcut
@@ -163,6 +164,7 @@ Section "Uninstall"
   Delete "$INSTDIR\${APP_EXE}"
   RMDir /r "$INSTDIR\bin"
   Delete "$DESKTOP\${APP_NAME}.lnk"
+  Delete "$SMPROGRAMS\${APP_NAME}.lnk"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
   DeleteRegKey HKCU "${REG_KEY}"
 
