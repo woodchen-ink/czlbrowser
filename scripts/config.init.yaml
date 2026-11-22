@@ -1,0 +1,31 @@
+# 新安装时写入的配置 (与 desktop/internal/config/config.default.yaml 保持一致)。
+database:
+  type: sqlite
+  sqlite:
+    path: data/app.db
+app:
+  name: CZL Browser
+  window:
+    width: 1280
+    height: 800
+    min_width: 1024
+    min_height: 640
+runtime:
+  max_memory_mb: 1024
+  gc_percent: 100
+logging:
+  level: info
+  file_enabled: false
+  file_path: data/logs/app.log
+  rotation:
+    max_size_mb: 100
+    max_backups: 5
+browser:
+  user_data_root: data
+  default_fingerprint_args:
+    - --fingerprint-brand=Chrome
+    - --fingerprint-platform=windows
+  default_launch_args:
+    - --disable-sync
+    - --no-first-run
+  default_proxy: ""

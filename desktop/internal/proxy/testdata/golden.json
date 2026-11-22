@@ -1,0 +1,1840 @@
+{
+  "dns": [
+    {
+      "in": "",
+      "out": null
+    },
+    {
+      "in": "8.8.8.8, 1.1.1.1",
+      "out": {
+        "servers": [
+          "8.8.8.8",
+          "1.1.1.1"
+        ]
+      }
+    },
+    {
+      "in": "tls://1.1.1.1, 9.9.9.9",
+      "out": {
+        "servers": [
+          "9.9.9.9"
+        ]
+      }
+    },
+    {
+      "in": "tls://1.1.1.1",
+      "out": null
+    },
+    {
+      "in": "dns:\n  enable: true\n  nameserver:\n    - 223.5.5.5\n    - tls://dot.example\n  fallback:\n    - https://dns.google/dns-query\n",
+      "out": {
+        "servers": [
+          "223.5.5.5",
+          "https://dns.google/dns-query"
+        ]
+      }
+    },
+    {
+      "in": "dns:\n  nameserver: []\n",
+      "out": {
+        "servers": [
+          "dns:\n  nameserver: []"
+        ]
+      }
+    },
+    {
+      "in": "dns:\n  nameserver:\n    - tls://only\n",
+      "out": {
+        "servers": [
+          "dns:\n  nameserver:\n    - tls://only"
+        ]
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "in": "",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": ""
+    },
+    {
+      "in": "direct://",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "direct://"
+    },
+    {
+      "in": "DIRECT://",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "DIRECT://"
+    },
+    {
+      "in": "http://1.2.3.4:8080",
+      "std": "http://1.2.3.4:8080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "1.2.3.4:8080",
+      "endpointErr": false,
+      "normalized": "http://1.2.3.4:8080"
+    },
+    {
+      "in": "http://user:pa%40ss@proxy.example.com:8080",
+      "std": "http://user:pa%40ss@proxy.example.com:8080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": {
+        "protocol": "http",
+        "settings": {
+          "servers": [
+            {
+              "address": "proxy.example.com",
+              "port": 8080,
+              "users": [
+                {
+                  "pass": "pa@ss",
+                  "user": "user"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "user:pa%40ss@proxy.example.com:8080",
+      "endpointErr": false,
+      "normalized": "http://user:pa%40ss@proxy.example.com:8080"
+    },
+    {
+      "in": "https://user:pass@1.2.3.4:443",
+      "std": "https://user:pass@1.2.3.4:443",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "user:pass@1.2.3.4:443",
+      "endpointErr": false,
+      "normalized": "https://user:pass@1.2.3.4:443"
+    },
+    {
+      "in": "socks5://1.2.3.4:1080",
+      "std": "socks5://1.2.3.4:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "1.2.3.4:1080",
+      "endpointErr": false,
+      "normalized": "socks5://1.2.3.4:1080"
+    },
+    {
+      "in": "socks5://u:p@1.2.3.4:1080",
+      "std": "socks5://u:p@1.2.3.4:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": {
+        "protocol": "socks",
+        "settings": {
+          "servers": [
+            {
+              "address": "1.2.3.4",
+              "port": 1080,
+              "users": [
+                {
+                  "pass": "p",
+                  "user": "u"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "u:p@1.2.3.4:1080",
+      "endpointErr": false,
+      "normalized": "socks5://u:p@1.2.3.4:1080"
+    },
+    {
+      "in": "socks5://u@1.2.3.4:1080",
+      "std": "socks5://u@1.2.3.4:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": {
+        "protocol": "socks",
+        "settings": {
+          "servers": [
+            {
+              "address": "1.2.3.4",
+              "port": 1080,
+              "users": [
+                {
+                  "pass": "",
+                  "user": "u"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "u@1.2.3.4:1080",
+      "endpointErr": false,
+      "normalized": "socks5://u@1.2.3.4:1080"
+    },
+    {
+      "in": "socks5://:p@1.2.3.4:1080",
+      "std": "socks5://:p@1.2.3.4:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": ":p@1.2.3.4:1080",
+      "endpointErr": false,
+      "normalized": "socks5://:p@1.2.3.4:1080"
+    },
+    {
+      "in": "socks5://u:p@1.2.3.4",
+      "std": "socks5://u:p@1.2.3.4",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "u:p@1.2.3.4",
+      "endpointErr": false,
+      "normalized": "socks5://u:p@1.2.3.4"
+    },
+    {
+      "in": "SOCKS5://U:P@Host.Example:1080",
+      "std": "SOCKS5://U:P@Host.Example:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": {
+        "protocol": "socks",
+        "settings": {
+          "servers": [
+            {
+              "address": "Host.Example",
+              "port": 1080,
+              "users": [
+                {
+                  "pass": "P",
+                  "user": "U"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "U:P@Host.Example:1080",
+      "endpointErr": false,
+      "normalized": "SOCKS5://U:P@Host.Example:1080"
+    },
+    {
+      "in": "vmess://eyJhZGQiOiJ2LmV4YW1wbGUuY29tIiwiaG9zdCI6ImNkbi5leGFtcGxlLmNvbSIsImlkIjoidXVpZC0xIiwibmV0Ijoid3MiLCJwYXRoIjoiL3dzIiwicG9ydCI6IjQ0MyIsInNuaSI6InMuZXhhbXBsZS5jb20iLCJ0bHMiOiJ0bHMifQ==",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "v.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "id": "uuid-1",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "tls",
+          "tlsSettings": {
+            "serverName": "s.example.com"
+          },
+          "wsSettings": {
+            "headers": {
+              "Host": "cdn.example.com"
+            },
+            "path": "/ws"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "v.example.com:443",
+      "endpointErr": false,
+      "normalized": "vmess://eyJhZGQiOiJ2LmV4YW1wbGUuY29tIiwiaG9zdCI6ImNkbi5leGFtcGxlLmNvbSIsImlkIjoidXVpZC0xIiwibmV0Ijoid3MiLCJwYXRoIjoiL3dzIiwicG9ydCI6IjQ0MyIsInNuaSI6InMuZXhhbXBsZS5jb20iLCJ0bHMiOiJ0bHMifQ=="
+    },
+    {
+      "in": "vmess://eyJhZGQiOiIxLjEuMS4xIiwiaWQiOiJ1dWlkLTIiLCJuZXQiOiJ0Y3AiLCJwb3J0IjoiODAifQ==",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "1.1.1.1",
+              "port": 80,
+              "users": [
+                {
+                  "id": "uuid-2",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "1.1.1.1:80",
+      "endpointErr": false,
+      "normalized": "vmess://eyJhZGQiOiIxLjEuMS4xIiwiaWQiOiJ1dWlkLTIiLCJuZXQiOiJ0Y3AiLCJwb3J0IjoiODAifQ=="
+    },
+    {
+      "in": "vmess://eyJhZGQiOiIxLjEuMS4xIiwiaWQiOiJ1dWlkLTMiLCJuZXQiOiJ3cyIsInBvcnQiOiI4MCJ9",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "1.1.1.1",
+              "port": 80,
+              "users": [
+                {
+                  "id": "uuid-3",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws"
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "1.1.1.1:80",
+      "endpointErr": false,
+      "normalized": "vmess://eyJhZGQiOiIxLjEuMS4xIiwiaWQiOiJ1dWlkLTMiLCJuZXQiOiJ3cyIsInBvcnQiOiI4MCJ9"
+    },
+    {
+      "in": "vmess://eyJhZGQiOiIxLjEuMS4xIiwiaWQiOiJ1dWlkLTQiLCJwb3J0IjoiNDQzIiwidGxzIjoidGxzIn0=",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "1.1.1.1",
+              "port": 443,
+              "users": [
+                {
+                  "id": "uuid-4",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "security": "tls"
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "1.1.1.1:443",
+      "endpointErr": false,
+      "normalized": "vmess://eyJhZGQiOiIxLjEuMS4xIiwiaWQiOiJ1dWlkLTQiLCJwb3J0IjoiNDQzIiwidGxzIjoidGxzIn0="
+    },
+    {
+      "in": "vmess://eyJhZGQiOiJyLmV4YW1wbGUiLCJwb3J0IjoiODQ0MyIsImlkIjoidTUiLCJuZXQiOiJ3cyIsInBhdGgiOiIvcCJ9",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "r.example",
+              "port": 8443,
+              "users": [
+                {
+                  "id": "u5",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "wsSettings": {
+            "path": "/p"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "r.example:8443",
+      "endpointErr": false,
+      "normalized": "vmess://eyJhZGQiOiJyLmV4YW1wbGUiLCJwb3J0IjoiODQ0MyIsImlkIjoidTUiLCJuZXQiOiJ3cyIsInBhdGgiOiIvcCJ9"
+    },
+    {
+      "in": "vmess://not-base64!!",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "vmess://not-base64!!"
+    },
+    {
+      "in": "vmess://bm90IGpzb24=",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "vmess://bm90IGpzb24="
+    },
+    {
+      "in": "vless://uuid-a@vl.example.com:443?security=tls\u0026sni=s.vl.example.com\u0026type=ws\u0026path=%2Fray\u0026host=h.example.com\u0026flow=xtls-rprx-vision",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "vl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "xtls-rprx-vision",
+                  "id": "uuid-a"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "tls",
+          "tlsSettings": {
+            "serverName": "s.vl.example.com"
+          },
+          "wsSettings": {
+            "headers": {
+              "Host": "h.example.com"
+            },
+            "path": "/ray"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "vl.example.com:443",
+      "endpointErr": false,
+      "normalized": "vless://uuid-a@vl.example.com:443?security=tls\u0026sni=s.vl.example.com\u0026type=ws\u0026path=%2Fray\u0026host=h.example.com\u0026flow=xtls-rprx-vision"
+    },
+    {
+      "in": "vless://uuid-b@vl.example.com:443?security=reality\u0026sni=r.example.com",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "vl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "uuid-b"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "security": "tls",
+          "tlsSettings": {
+            "serverName": "r.example.com"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "vl.example.com:443",
+      "endpointErr": false,
+      "normalized": "vless://uuid-b@vl.example.com:443?security=reality\u0026sni=r.example.com"
+    },
+    {
+      "in": "vless://uuid-c@10.0.0.1:8080?network=ws",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "10.0.0.1",
+              "port": 8080,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "uuid-c"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "wsSettings": {
+            "headers": {
+              "Host": "10.0.0.1"
+            }
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "10.0.0.1:8080",
+      "endpointErr": false,
+      "normalized": "vless://uuid-c@10.0.0.1:8080?network=ws"
+    },
+    {
+      "in": "vless://uuid-d@10.0.0.1:8080",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "10.0.0.1",
+              "port": 8080,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "uuid-d"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "10.0.0.1:8080",
+      "endpointErr": false,
+      "normalized": "vless://uuid-d@10.0.0.1:8080"
+    },
+    {
+      "in": "vless://uuid-e@vl.example.com:443?type=grpc\u0026security=none#name",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "vl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "uuid-e"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "vl.example.com:443",
+      "endpointErr": false,
+      "normalized": "vless://uuid-e@vl.example.com:443?type=grpc\u0026security=none#name"
+    },
+    {
+      "in": "trojan://pass@t.example.com:443?sni=s.t.example.com\u0026allowInsecure=1\u0026type=ws\u0026path=%2Ftj\u0026host=th.example.com#tag",
+      "std": "",
+      "outbound": {
+        "protocol": "trojan",
+        "settings": {
+          "address": "t.example.com",
+          "password": "pass",
+          "port": 443
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": true,
+            "serverName": "s.t.example.com"
+          },
+          "wsSettings": {
+            "headers": {
+              "Host": "th.example.com"
+            },
+            "path": "/tj"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "trojan://pass@t.example.com:443?sni=s.t.example.com\u0026allowInsecure=1\u0026type=ws\u0026path=%2Ftj\u0026host=th.example.com#tag"
+    },
+    {
+      "in": "trojan://pass@t.example.com:443?peer=p.example.com\u0026allowInsecure=true",
+      "std": "",
+      "outbound": {
+        "protocol": "trojan",
+        "settings": {
+          "address": "t.example.com",
+          "password": "pass",
+          "port": 443
+        },
+        "streamSettings": {
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": true,
+            "serverName": "p.example.com"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "trojan://pass@t.example.com:443?peer=p.example.com\u0026allowInsecure=true"
+    },
+    {
+      "in": "trojan://pass@t.example.com:443",
+      "std": "",
+      "outbound": {
+        "protocol": "trojan",
+        "settings": {
+          "address": "t.example.com",
+          "password": "pass",
+          "port": 443
+        },
+        "streamSettings": {
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": false,
+            "serverName": ""
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "trojan://pass@t.example.com:443"
+    },
+    {
+      "in": "ss://YWVzLTI1Ni1nY206c2VjcmV0@ss.example.com:8388#node",
+      "std": "",
+      "outbound": {
+        "protocol": "shadowsocks",
+        "settings": {
+          "address": "ss.example.com",
+          "method": "aes-256-gcm",
+          "password": "secret",
+          "port": 8388
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "ss://YWVzLTI1Ni1nY206c2VjcmV0@ss.example.com:8388#node"
+    },
+    {
+      "in": "ss://chacha20-ietf-poly1305:plain@ss.example.com:8389",
+      "std": "",
+      "outbound": {
+        "protocol": "shadowsocks",
+        "settings": {
+          "address": "ss.example.com",
+          "method": "chacha20-ietf-poly1305",
+          "password": "plain",
+          "port": 8389
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "ss://chacha20-ietf-poly1305:plain@ss.example.com:8389"
+    },
+    {
+      "in": "ss://YWVzLTEyOC1nY206cHdAMS4yLjMuNDo4MDAw#x",
+      "std": "",
+      "outbound": {
+        "protocol": "shadowsocks",
+        "settings": {
+          "address": "1.2.3.4",
+          "method": "aes-128-gcm",
+          "password": "pw",
+          "port": 8000
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "ss://YWVzLTEyOC1nY206cHdAMS4yLjMuNDo4MDAw#x"
+    },
+    {
+      "in": "ss://YWVzLTEyOC1nY206cHc=",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "ss://YWVzLTEyOC1nY206cHc="
+    },
+    {
+      "in": "ss://bm9ob3N0",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "ss://bm9ob3N0"
+    },
+    {
+      "in": "ssr://abc",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "ssr://abc"
+    },
+    {
+      "in": "hysteria2://pw@h.example.com:443?sni=s.h.example.com\u0026insecure=1\u0026obfs-password=ob",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "obfs": {
+          "password": "ob",
+          "type": "salamander"
+        },
+        "password": "pw",
+        "server": "h.example.com",
+        "server_port": 443,
+        "tag": "proxy-out",
+        "tls": {
+          "enabled": true,
+          "insecure": true,
+          "server_name": "s.h.example.com"
+        },
+        "type": "hysteria2"
+      },
+      "singBoxErr": false,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "hysteria2://pw@h.example.com:443?sni=s.h.example.com\u0026insecure=1\u0026obfs-password=ob"
+    },
+    {
+      "in": "hysteria://pw@h.example.com:8443?peer=p.example.com",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "password": "pw",
+        "server": "h.example.com",
+        "server_port": 8443,
+        "tag": "proxy-out",
+        "tls": {
+          "enabled": true,
+          "insecure": false,
+          "server_name": "p.example.com"
+        },
+        "type": "hysteria2"
+      },
+      "singBoxErr": false,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "hysteria2://pw@h.example.com:8443?peer=p.example.com"
+    },
+    {
+      "in": "hysteria2://h.example.com",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": true,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "hysteria2://h.example.com"
+    },
+    {
+      "in": "hysteria2://pw@h.example.com:443",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "password": "pw",
+        "server": "h.example.com",
+        "server_port": 443,
+        "tag": "proxy-out",
+        "tls": {
+          "enabled": true,
+          "insecure": false
+        },
+        "type": "hysteria2"
+      },
+      "singBoxErr": false,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "hysteria2://pw@h.example.com:443"
+    },
+    {
+      "in": "tuic://abc",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "tuic://abc"
+    },
+    {
+      "in": "unknown://abc",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "unknown://abc"
+    },
+    {
+      "in": "just some text",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "just some text"
+    },
+    {
+      "in": "proxies:\n  - name: a\n    type: vmess\n    server: cv.example.com\n    port: 443\n    uuid: u-cv\n    cipher: aes-128-gcm\n    tls: true\n    servername: sn.example.com\n    skip-cert-verify: true\n    network: ws\n    ws-opts:\n      path: /\n      headers:\n        Host: wh.example.com\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cv.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "id": "u-cv",
+                  "security": "aes-128-gcm"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": true,
+            "serverName": "sn.example.com"
+          },
+          "wsSettings": {
+            "headers": {
+              "Host": "wh.example.com"
+            },
+            "path": "/"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cv.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: a\n    type: vmess\n    server: cv.example.com\n    port: 443\n    uuid: u-cv\n    cipher: aes-128-gcm\n    tls: true\n    servername: sn.example.com\n    skip-cert-verify: true\n    network: ws\n    ws-opts:\n      path: /\n      headers:\n        Host: wh.example.com"
+    },
+    {
+      "in": "proxies:\n  - name: b\n    type: vmess\n    server: cv.example.com\n    port: \"8080\"\n    uuid: u-cv2\n    network: grpc\n    grpc-opts:\n      grpc-service-name: svc\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cv.example.com",
+              "port": 8080,
+              "users": [
+                {
+                  "id": "u-cv2",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "grpcSettings": {
+            "serviceName": "svc"
+          },
+          "network": "grpc"
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cv.example.com:8080",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: b\n    type: vmess\n    server: cv.example.com\n    port: \"8080\"\n    uuid: u-cv2\n    network: grpc\n    grpc-opts:\n      grpc-service-name: svc"
+    },
+    {
+      "in": "proxies:\n  - name: c\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl\n    flow: xtls-rprx-vision\n    tls: true\n    sni: s.cl.example.com\n    reality-opts:\n      public-key: PBK\n      short-id: SID\n    client-fingerprint: firefox\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "xtls-rprx-vision",
+                  "id": "u-cl"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "realitySettings": {
+            "fingerprint": "firefox",
+            "publicKey": "PBK",
+            "serverName": "s.cl.example.com",
+            "shortId": "SID",
+            "spiderX": ""
+          },
+          "security": "reality"
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cl.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: c\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl\n    flow: xtls-rprx-vision\n    tls: true\n    sni: s.cl.example.com\n    reality-opts:\n      public-key: PBK\n      short-id: SID\n    client-fingerprint: firefox"
+    },
+    {
+      "in": "proxies:\n  - name: d\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl2\n    tls: \"tls\"\n    network: ws\n    ws-opts:\n      path: /v\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "u-cl2"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": false
+          },
+          "wsSettings": {
+            "path": "/v"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cl.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: d\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl2\n    tls: \"tls\"\n    network: ws\n    ws-opts:\n      path: /v"
+    },
+    {
+      "in": "proxies:\n  - name: d2\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl3\n    reality-opts: {}\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "u-cl3"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "realitySettings": {
+            "fingerprint": "chrome",
+            "spiderX": ""
+          },
+          "security": "reality"
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cl.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: d2\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl3\n    reality-opts: {}"
+    },
+    {
+      "in": "proxies:\n  - name: d3\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl4\n    network: grpc\n    grpc-opts:\n      grpc-service-name: g\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cl.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "u-cl4"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "grpcSettings": {
+            "serviceName": "g"
+          },
+          "network": "grpc"
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cl.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: d3\n    type: vless\n    server: cl.example.com\n    port: 443\n    uuid: u-cl4\n    network: grpc\n    grpc-opts:\n      grpc-service-name: g"
+    },
+    {
+      "in": "proxies:\n  - name: e\n    type: trojan\n    server: ct.example.com\n    port: 443\n    password: tpw\n    sni: s.ct.example.com\n    skip-cert-verify: true\n    network: grpc\n    grpc-opts:\n      grpc-service-name: tg\n",
+      "std": "",
+      "outbound": {
+        "protocol": "trojan",
+        "settings": {
+          "address": "ct.example.com",
+          "password": "tpw",
+          "port": 443
+        },
+        "streamSettings": {
+          "grpcSettings": {
+            "serviceName": "tg"
+          },
+          "network": "grpc",
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": true,
+            "serverName": "s.ct.example.com"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "ct.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: e\n    type: trojan\n    server: ct.example.com\n    port: 443\n    password: tpw\n    sni: s.ct.example.com\n    skip-cert-verify: true\n    network: grpc\n    grpc-opts:\n      grpc-service-name: tg"
+    },
+    {
+      "in": "proxies:\n  - name: e2\n    type: trojan\n    server: ct.example.com\n    port: 443\n    password: tpw\n    network: ws\n    ws-opts:\n      path: /t\n      headers:\n        Host: th\n",
+      "std": "",
+      "outbound": {
+        "protocol": "trojan",
+        "settings": {
+          "address": "ct.example.com",
+          "password": "tpw",
+          "port": 443
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": false,
+            "serverName": ""
+          },
+          "wsSettings": {
+            "headers": {
+              "Host": "th"
+            },
+            "path": "/t"
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "ct.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: e2\n    type: trojan\n    server: ct.example.com\n    port: 443\n    password: tpw\n    network: ws\n    ws-opts:\n      path: /t\n      headers:\n        Host: th"
+    },
+    {
+      "in": "proxies:\n  - name: f\n    type: ss\n    server: cs.example.com\n    port: 8388\n    password: spw\n    cipher: chacha20-ietf-poly1305\n    plugin: obfs\n",
+      "std": "",
+      "outbound": {
+        "protocol": "shadowsocks",
+        "settings": {
+          "address": "cs.example.com",
+          "method": "chacha20-ietf-poly1305",
+          "password": "spw",
+          "port": 8388
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cs.example.com:8388",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: f\n    type: ss\n    server: cs.example.com\n    port: 8388\n    password: spw\n    cipher: chacha20-ietf-poly1305\n    plugin: obfs"
+    },
+    {
+      "in": "proxies:\n  - name: f2\n    type: shadowsocks\n    server: cs.example.com\n    port: 8388\n    password: spw\n    method: aes-128-gcm\n",
+      "std": "",
+      "outbound": {
+        "protocol": "shadowsocks",
+        "settings": {
+          "address": "cs.example.com",
+          "method": "aes-128-gcm",
+          "password": "spw",
+          "port": 8388
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cs.example.com:8388",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: f2\n    type: shadowsocks\n    server: cs.example.com\n    port: 8388\n    password: spw\n    method: aes-128-gcm"
+    },
+    {
+      "in": "proxies:\n  - name: f3\n    type: ss\n    server: cs.example.com\n    port: 8388\n    password: spw\n",
+      "std": "",
+      "outbound": {
+        "protocol": "shadowsocks",
+        "settings": {
+          "address": "cs.example.com",
+          "method": "aes-256-gcm",
+          "password": "spw",
+          "port": 8388
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cs.example.com:8388",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: f3\n    type: ss\n    server: cs.example.com\n    port: 8388\n    password: spw"
+    },
+    {
+      "in": "proxies:\n  - name: g\n    type: socks5\n    server: cso.example.com\n    port: 1080\n    username: u\n    password: p@ss\n",
+      "std": "socks5://u:p%40ss@cso.example.com:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "cso.example.com:1080",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: g\n    type: socks5\n    server: cso.example.com\n    port: 1080\n    username: u\n    password: p@ss"
+    },
+    {
+      "in": "proxies:\n  - name: g2\n    type: http\n    server: ch.example.com\n    port: 3128\n",
+      "std": "http://ch.example.com:3128",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "ch.example.com:3128",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: g2\n    type: http\n    server: ch.example.com\n    port: 3128"
+    },
+    {
+      "in": "proxies:\n  - name: g3\n    type: https\n    server: ch.example.com\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "proxies:\n  - name: g3\n    type: https\n    server: ch.example.com"
+    },
+    {
+      "in": "proxies:\n  - name: h\n    type: hysteria2\n    server: chy.example.com\n    port: 443\n    password: hpw\n    sni: s.chy.example.com\n    skip-cert-verify: true\n    up: \"30 Mbps\"\n    down: 100M\n    obfs-password: ob\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "down_mbps": 100,
+        "obfs": {
+          "password": "ob",
+          "type": "salamander"
+        },
+        "password": "hpw",
+        "server": "chy.example.com",
+        "server_port": 443,
+        "tag": "proxy-out",
+        "tls": {
+          "enabled": true,
+          "insecure": true,
+          "server_name": "s.chy.example.com"
+        },
+        "type": "hysteria2",
+        "up_mbps": 30
+      },
+      "singBoxErr": false,
+      "endpoint": "chy.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: h\n    type: hysteria2\n    server: chy.example.com\n    port: 443\n    password: hpw\n    sni: s.chy.example.com\n    skip-cert-verify: true\n    up: \"30 Mbps\"\n    down: 100M\n    obfs-password: ob"
+    },
+    {
+      "in": "proxies:\n  - name: h2\n    type: hysteria\n    server: chy.example.com\n    port: 443\n    servername: sn\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "password": "",
+        "server": "chy.example.com",
+        "server_port": 443,
+        "tag": "proxy-out",
+        "tls": {
+          "enabled": true,
+          "insecure": false,
+          "server_name": "sn"
+        },
+        "type": "hysteria2"
+      },
+      "singBoxErr": false,
+      "endpoint": "chy.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: h2\n    type: hysteria\n    server: chy.example.com\n    port: 443\n    servername: sn"
+    },
+    {
+      "in": "proxies:\n  - name: h3\n    type: hysteria2\n    port: 443\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": false,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": true,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "proxies:\n  - name: h3\n    type: hysteria2\n    port: 443"
+    },
+    {
+      "in": "proxies:\n  - name: i\n    type: tuic\n    server: ctu.example.com\n    port: 443\n    uuid: u-tu\n    password: tupw\n    sni: s.ctu\n    alpn: [h3, h2]\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "congestion_control": "bbr",
+        "password": "tupw",
+        "server": "ctu.example.com",
+        "server_port": 443,
+        "tag": "proxy-out",
+        "tls": {
+          "alpn": [
+            "h3",
+            "h2"
+          ],
+          "enabled": true,
+          "insecure": false,
+          "server_name": "s.ctu"
+        },
+        "type": "tuic",
+        "uuid": "u-tu"
+      },
+      "singBoxErr": false,
+      "endpoint": "ctu.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: i\n    type: tuic\n    server: ctu.example.com\n    port: 443\n    uuid: u-tu\n    password: tupw\n    sni: s.ctu\n    alpn: [h3, h2]"
+    },
+    {
+      "in": "proxies:\n  - name: i2\n    type: tuic\n    server: ctu.example.com\n    port: 443\n    alpn: h3\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": true,
+      "singBoxOut": {
+        "congestion_control": "bbr",
+        "password": "",
+        "server": "ctu.example.com",
+        "server_port": 443,
+        "tag": "proxy-out",
+        "tls": {
+          "alpn": [
+            "h3"
+          ],
+          "enabled": true,
+          "insecure": false
+        },
+        "type": "tuic",
+        "uuid": ""
+      },
+      "singBoxErr": false,
+      "endpoint": "ctu.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: i2\n    type: tuic\n    server: ctu.example.com\n    port: 443\n    alpn: h3"
+    },
+    {
+      "in": "proxies:\n  - name: j\n    type: ssr\n    server: x\n    port: 1\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "x:1",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: j\n    type: ssr\n    server: x\n    port: 1"
+    },
+    {
+      "in": "proxies:\n  - name: k\n    type: wireguard\n    server: x\n    port: 1\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "x:1",
+      "endpointErr": false,
+      "normalized": "proxies:\n  - name: k\n    type: wireguard\n    server: x\n    port: 1"
+    },
+    {
+      "in": "proxies: []\n",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "proxies: []"
+    },
+    {
+      "in": "type: vmess\nserver: single.example.com\nport: 443\nuuid: u-single\n",
+      "std": "",
+      "outbound": {
+        "protocol": "vmess",
+        "settings": {
+          "vnext": [
+            {
+              "address": "single.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "id": "u-single",
+                  "security": "auto"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "single.example.com:443",
+      "endpointErr": false,
+      "normalized": "type: vmess\nserver: single.example.com\nport: 443\nuuid: u-single"
+    },
+    {
+      "in": "proxy:\n  type: trojan\n  server: single.example.com\n  port: 443\n  password: pw\n",
+      "std": "",
+      "outbound": {
+        "protocol": "trojan",
+        "settings": {
+          "address": "single.example.com",
+          "password": "pw",
+          "port": 443
+        },
+        "streamSettings": {
+          "security": "tls",
+          "tlsSettings": {
+            "allowInsecure": false,
+            "serverName": ""
+          }
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "single.example.com:443",
+      "endpointErr": false,
+      "normalized": "proxy:\n  type: trojan\n  server: single.example.com\n  port: 443\n  password: pw"
+    },
+    {
+      "in": "- type: socks5\n  server: arr.example.com\n  port: 1080\n",
+      "std": "socks5://arr.example.com:1080",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "arr.example.com:1080",
+      "endpointErr": false,
+      "normalized": "- type: socks5\n  server: arr.example.com\n  port: 1080"
+    },
+    {
+      "in": "clash://dHlwZTogdmxlc3MKc2VydmVyOiBjYi5leGFtcGxlLmNvbQpwb3J0OiA0NDMKdXVpZDogdS1jYgo=",
+      "std": "",
+      "outbound": {
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "cb.example.com",
+              "port": 443,
+              "users": [
+                {
+                  "encryption": "none",
+                  "flow": "",
+                  "id": "u-cb"
+                }
+              ]
+            }
+          ]
+        },
+        "tag": "proxy-out"
+      },
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "clash://dHlwZTogdmxlc3MKc2VydmVyOiBjYi5leGFtcGxlLmNvbQpwb3J0OiA0NDMKdXVpZDogdS1jYgo="
+    },
+    {
+      "in": "clash://dHlwZTogaHR0cApzZXJ2ZXI6IGNiLmV4YW1wbGUuY29tCnBvcnQ6IDgwCg==",
+      "std": "http://cb.example.com:80",
+      "outbound": null,
+      "parseErr": false,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": true,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "clash://dHlwZTogaHR0cApzZXJ2ZXI6IGNiLmV4YW1wbGUuY29tCnBvcnQ6IDgwCg=="
+    },
+    {
+      "in": "clash://%%%",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "clash://%%%"
+    },
+    {
+      "in": "type: [broken",
+      "std": "",
+      "outbound": null,
+      "parseErr": true,
+      "bridge": true,
+      "bridgeOut": null,
+      "validOk": false,
+      "singBox": false,
+      "singBoxOut": null,
+      "singBoxErr": true,
+      "endpoint": "",
+      "endpointErr": true,
+      "normalized": "type: [broken"
+    }
+  ]
+}

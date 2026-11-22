@@ -1,0 +1,87 @@
+/* 基础主题变量定义 */
+
+:root {
+  --color-bg-base: #f6f7f8;
+  --color-bg-surface: #fbfcfd;
+  --color-bg-elevated: #ffffff;
+  --color-bg-muted: #e7ecf2;
+  --color-bg-subtle: #f1f4f7;
+  --color-bg-primary: var(--color-bg-surface);
+  --color-bg-secondary: var(--color-bg-muted);
+  --color-bg-card: var(--color-bg-surface);
+  --color-bg-default: var(--color-bg-base);
+  --color-bg-input: var(--color-bg-elevated);
+  --color-bg-hover: #edf1f6;
+
+  --color-border-default: #d7dfe7;
+  --color-border-muted: #e7ecf2;
+  --color-border-strong: #bfc8d3;
+  --color-border: var(--color-border-default);
+  --color-border-hover: var(--color-border-strong);
+
+  --color-text-primary: #181d22;
+  --color-text-secondary: #4f5b68;
+  --color-text-muted: #7d8794;
+  --color-text-inverse: #ffffff;
+
+  /* CZL 中性风：accent 承担链接 / 选中 / 激活 / 图标着色，统一走近黑而非品牌蓝。
+     品牌蓝 --color-brand 仅用于 focus 光晕 (--color-ring) 与 Logo，全站极少出现。 */
+  --color-accent: #181d22;
+  --color-accent-hover: #000000;
+  --color-accent-muted: #e7ecf2;
+  --color-accent-soft: #eef1f5;
+  --color-primary: var(--color-accent);
+
+  /* 品牌色：仅 focus ring / Logo / 进度指示使用 */
+  --color-brand: #2ea7e0;
+  /* 导航当前项与选中行：品牌浅底 + 品牌深字 */
+  --color-brand-soft: #e5f3fa;
+  --color-brand-strong: #0d6a96;
+
+  --color-success: #2f8a4e;
+  --color-warning: #b97914;
+  --color-error: #c2384a;
+  --color-info: #4b5b75;
+  --color-success-soft: #e4f1e9;
+  --color-warning-soft: #f6ecda;
+  --color-error-soft: #f6e4e7;
+  --color-info-soft: #e7ebf2;
+  /* 数据可视化配色：CZL 统一 OKLCH 调色板，避开品牌青蓝色相 */
+  --color-chart-1: #3975e0;
+  --color-chart-2: #4caf33;
+  --color-chart-3: #f58d31;
+  --color-chart-4: #7256d4;
+  --color-chart-5: #e3496f;
+  --color-chart-6: #ecb333;
+  --color-overlay: rgb(16 20 28 / 0.5);
+  --color-overlay-soft: rgb(16 20 28 / 0.2);
+  --color-preview-line: rgb(0 0 0 / 0.1);
+
+  --color-button-primary: #181d22;
+  --color-button-primary-foreground: #ffffff;
+  --color-button-primary-hover: #000000;
+  --color-button-primary-active: #101317;
+  --color-button-primary-disabled: #a7b0bb;
+  --color-button-primary-disabled-foreground: #ffffff;
+  --color-ring: #2ea7e0;
+
+  --color-preview-light-bg: #f6f7f8;
+  --color-preview-light-sidebar: #fbfcfd;
+  --color-preview-light-accent: #181d22;
+  --color-preview-dark-bg: #10141c;
+  --color-preview-dark-sidebar: #171c25;
+  --color-preview-dark-accent: #eef3f8;
+  --color-surface-elevated: var(--color-bg-elevated);
+
+  --shadow-sm: 0 1px 2px rgb(16 20 28 / 0.06);
+  --shadow-md: 0 12px 30px -16px rgb(16 20 28 / 0.22);
+  --shadow-lg: 0 24px 48px -24px rgb(16 20 28 / 0.28);
+
+  /* 侧栏 / 下沉面 */
+  --color-bg-sunken: #f1f3f5;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}

@@ -1,0 +1,69 @@
+﻿# OS
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+.history/
+.kiro/
+*.swp
+*.swo
+
+# Local agent/editor rules
+.windsurfrules
+
+# Logs
+*.log
+*.err
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+desktop/build/bin/
+desktop/chrome/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 代理运行时随仓库提供
+!desktop/bin/xray.exe
+!desktop/bin/sing-box.exe
+
+# Internal docs / scratch files (品牌图标源入库)
+docs/*
+!docs/design/
+DEPLOYMENT_GUIDE.md
+plan.md
+pic/
+
+# Runtime data
+data/
+snapshots/
+app.db
+*.db
+*.sqlite
+*.sqlite3
+proxies.yaml
+profiles.yaml
+
+# Frontend deps/cache
+desktop/frontend/node_modules/
+desktop/frontend/dist/
+desktop/frontend/.vite/
+
+# Test outputs / coverage
+coverage/
+*.out
+
+# Env files
+.env
+.env.*
+!.env.example
+config.yaml.broken-*
+docs/design/brand/out/
+desktop/frontend/package.json.md5

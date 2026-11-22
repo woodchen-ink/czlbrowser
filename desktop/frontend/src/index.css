@@ -1,0 +1,87 @@
+/* 主题变量要在 Tailwind 之前载入 */
+@import './shared/theme/themes/index.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'CZL';
+  src: url('/fonts/CZL.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen font-sans leading-normal antialiased;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    transition: background-color 0.2s, color 0.2s;
+  }
+  #root {
+    @apply min-h-screen;
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-text-inverse);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* 细滚动条, 不抢内容 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+}
+
+@layer utilities {
+  /* 弹层出现: 遮罩淡入, 弹窗轻微放大, 提示从右滑入 */
+  .animate-fade-in {
+    animation: czl-fade 0.2s ease-out;
+  }
+  .animate-scale-in {
+    animation: czl-pop 0.2s ease-out;
+  }
+  .animate-slide-in-right {
+    animation: czl-slide-right 0.3s ease-out;
+  }
+  /* 能横向滚动但不显示滚动条 (分组按钮行) */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes czl-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes czl-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes czl-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}

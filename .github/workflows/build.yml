@@ -1,0 +1,174 @@
+name: Build Windows Installer
+
+# 每次 push 到 main / master 自动构建 Windows 安装包并发布 Release。
+# 仅 Windows：代理运行时 (xray/sing-box)、NSIS、WebView2 均为 Windows-only，
+# 其它平台无法产出可用安装包。安装包不含 chrome 内核（被 gitignore，CI 拿不到），
+# 用户安装后自备内核——与项目"内核用户自备"模式一致。
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'images/**'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: desktop/frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+
+      - name: Install frontend dependencies
+        working-directory: desktop/frontend
+        run: npm ci
+
+      # 客户端运行时会从 woodchen-ink/Chrome-exe 拉取最新内核清单；这里把内嵌兜底清单也刷新到最新，
+      # 远程不可用或校验失败时保留仓库中的版本，不影响构建。
+      - name: Refresh embedded core manifest
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $target = 'builtin_cores.json'
+          $backup = Get-Content -Raw $target
+          # main.go 用 go:embed 嵌入 frontend/dist, 干净检出里还没有, 先放个占位文件让测试能编译 (wails build 会重建这个目录)
+          New-Item -ItemType Directory -Force frontend/dist | Out-Null
+          if (-not (Get-ChildItem frontend/dist)) { Set-Content frontend/dist/index.html '' }
+          try {
+            $content = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 30 'https://raw.githubusercontent.com/woodchen-ink/Chrome-exe/main/cores.json').Content
+            [IO.File]::WriteAllText((Resolve-Path $target), $content)
+            go test . -run '^TestBuiltinCoresManifest$' -count=1
+            if ($LASTEXITCODE -ne 0) { throw '远程内核清单未通过校验' }
+            Write-Host '内嵌内核清单已刷新'
+          } catch {
+            [IO.File]::WriteAllText((Resolve-Path $target), $backup)
+            Write-Warning "内核清单刷新失败，沿用仓库版本: $_"
+          }
+          exit 0
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          # 日期按 UTC+8（东八区）计算，与本地一致，避免 runner UTC 差一天。
+          $date = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow, 'China Standard Time')
+          $datePart = $date.ToString('yyyy.MM.dd')
+          # tag = 日期 + run_number，保证同一天多次构建不撞 tag，每次产生新历史 Release。
+          $full = "$datePart.$($env:GITHUB_RUN_NUMBER)"
+          $tag = "v$full"
+          # asset 文件名带版本号，便于区分不同构建（下载文件名随版本变化）。
+          $asset = "CZLBrowser-Setup-$full.exe"
+          "fullVersion=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tag"          | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "assetName=$asset"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $full  Tag: $tag  Asset: $asset"
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      # 构建 exe (版本号编进程序, 客户端据此判断更新) 并打安装包; CI 不打包 Chrome 内核
+      - name: Build installer
+        shell: pwsh
+        run: ./scripts/build.ps1 -Installer -Version '${{ steps.version.outputs.fullVersion }}'
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: CZLBrowser-Setup-${{ steps.version.outputs.fullVersion }}
+          path: dist/${{ steps.version.outputs.assetName }}
+          retention-days: 90
+          if-no-files-found: error
+
+      # ---------------- 在线更新清单 ----------------
+      # 生成清单并用 Ed25519 私钥签名为 latest.json，随安装包一起作为本仓库 Release 附件发布。
+      # CZL Connect (slug czlbrowser) 代理本仓库 Release：windows 别名指向安装包，
+      # update-manifest 别名指向 latest.json，客户端只从 Connect 获取清单与安装包。
+      - name: Sign update manifest
+        shell: pwsh
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          COMMIT_MESSAGES: ${{ toJSON(github.event.commits.*.message) }}
+        run: |
+          if (-not $env:UPDATE_SIGNING_KEY) { throw '未配置 UPDATE_SIGNING_KEY，无法签名更新清单' }
+          $tag = '${{ steps.version.outputs.tag }}'
+          $asset = '${{ steps.version.outputs.assetName }}'
+          $file = "dist/$asset"
+
+          # 更新说明：本次 push 包含的提交标题；手动触发时取 HEAD 提交标题
+          $lines = @()
+          try { $lines = @(($env:COMMIT_MESSAGES | ConvertFrom-Json) | Where-Object { $_ } | ForEach-Object { ($_ -split "`n")[0].Trim() }) } catch {}
+          if ($lines.Count -eq 0) { $lines = @(git log -1 --pretty=%s) }
+          $changelog = ($lines | ForEach-Object { "- $_" }) -join "`n"
+
+          $manifest = [ordered]@{
+            version      = '${{ steps.version.outputs.fullVersion }}'
+            platform     = 'windows-x64'
+            publishedAt  = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+            changelog    = $changelog
+            fileName     = $asset
+            size         = (Get-Item $file).Length
+            sha256       = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
+            # 固定 tag 链接，避免下载期间 latest 漂移
+            downloadUrls = @("https://connect.czl.net/dl/czlbrowser/$tag/windows")
+          }
+          [IO.File]::WriteAllText("$PWD/dist/manifest.json", ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+
+          Push-Location desktop
+          go run ./cmd/updatesign sign -in ../dist/manifest.json -out ../dist/latest.json
+          $signExit = $LASTEXITCODE
+          Pop-Location
+          if ($signExit -ne 0) { throw '清单签名失败' }
+          # 用客户端同一套验签逻辑校验，防止私钥与内置公钥不匹配时发布出客户端无法识别的清单
+          $env:UPDATE_ENVELOPE_FILE = "$PWD/dist/latest.json"
+          Push-Location desktop
+          go test ./internal/update/ -run '^TestReleaseEnvelope$' -count=1 -v
+          $verifyExit = $LASTEXITCODE
+          Pop-Location
+          if ($verifyExit -ne 0) { throw '清单验签失败：UPDATE_SIGNING_KEY 与内置公钥不匹配' }
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v3
+        with:
+          # 日期 tag 每次新建历史 Release；make_latest 标记最新一个，
+          # Connect 的 latest 别名据此解析到最新安装包与清单。
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: CZL Browser ${{ steps.version.outputs.fullVersion }}
+          make_latest: 'true'
+          body: |
+            自动构建产物（Windows x64，不含 Chrome 内核，需自备内核）。
+
+            - 提交: ${{ github.sha }}
+            - 分支: ${{ github.ref_name }}
+          files: |
+            dist/${{ steps.version.outputs.assetName }}
+            dist/latest.json
+          draft: false
+          prerelease: false

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "CZL Browser",
+  "outputfilename": "czl-browser",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://127.0.0.1:5218",
+  "author": {
+    "name": "CZL Browser Team",
+    "email": "support@czl.net"
+  },
+  "info": {
+    "companyName": "CZL LTD",
+    "productName": "CZL Browser",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026",
+    "comments": "指纹浏览器"
+  },
+  "nsisType": "multiple",
+  "obfuscated": false,
+  "wailsjsdir": "./frontend/src"
+}

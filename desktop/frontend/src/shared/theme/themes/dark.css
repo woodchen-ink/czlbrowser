@@ -1,0 +1,78 @@
+/* 深色主题 */
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg-base: #10141c;
+  --color-bg-surface: #171c25;
+  --color-bg-elevated: #1d2430;
+  --color-bg-muted: #202938;
+  --color-bg-subtle: #141a23;
+  --color-bg-primary: var(--color-bg-surface);
+  --color-bg-secondary: var(--color-bg-muted);
+  --color-bg-card: var(--color-bg-surface);
+  --color-bg-default: var(--color-bg-base);
+  --color-bg-input: var(--color-bg-elevated);
+  --color-bg-hover: #1d2430;
+
+  --color-border-default: #283346;
+  --color-border-muted: #1d2734;
+  --color-border-strong: #3c4a61;
+  --color-border: var(--color-border-default);
+  --color-border-hover: var(--color-border-strong);
+
+  --color-text-primary: #eef3f8;
+  --color-text-secondary: #d5dce5;
+  --color-text-muted: #95a0ae;
+  --color-text-inverse: #10141c;
+
+  /* CZL 中性风：暗色下 accent 走近白，承担链接 / 选中 / 激活着色；品牌蓝仅留给 ring / Logo */
+  --color-accent: #eef3f8;
+  --color-accent-hover: #ffffff;
+  --color-accent-muted: #202938;
+  --color-accent-soft: #283346;
+  --color-primary: var(--color-accent);
+
+  /* 品牌色：暗色下提亮一档 */
+  --color-brand: #4fb8e8;
+  --color-brand-soft: #13303f;
+  --color-brand-strong: #8fd3f2;
+  --color-bg-sunken: #0d1118;
+
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-info: #94a3b8;
+  --color-success-soft: #14271b;
+  --color-warning-soft: #2c2410;
+  --color-error-soft: #2c1719;
+  --color-info-soft: #1c2533;
+  --color-chart-1: #659cfe;
+  --color-chart-2: #73c660;
+  --color-chart-3: #ffa458;
+  --color-chart-4: #917eed;
+  --color-chart-5: #f9738d;
+  --color-chart-6: #fcc85f;
+  --color-overlay: rgb(0 0 0 / 0.55);
+  --color-overlay-soft: rgb(0 0 0 / 0.3);
+  --color-preview-line: rgb(255 255 255 / 0.14);
+
+  --color-button-primary: #e8edf2;
+  --color-button-primary-foreground: #10141c;
+  --color-button-primary-hover: #ffffff;
+  --color-button-primary-active: #cdd4dc;
+  --color-button-primary-disabled: #253042;
+  --color-button-primary-disabled-foreground: #708095;
+  --color-ring: #4fb8e8;
+  --color-preview-light-bg: #f6f7f8;
+  --color-preview-light-sidebar: #fbfcfd;
+  --color-preview-light-accent: #181d22;
+  --color-preview-dark-bg: #10141c;
+  --color-preview-dark-sidebar: #171c25;
+  --color-preview-dark-accent: #eef3f8;
+
+  --color-surface-elevated: var(--color-bg-elevated);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28);
+  --shadow-md: 0 16px 36px -20px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 28px 60px -28px rgb(0 0 0 / 0.58);
+}

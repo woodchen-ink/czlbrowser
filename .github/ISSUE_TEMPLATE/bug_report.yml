@@ -1,0 +1,49 @@
+name: 问题反馈 / Bug report
+description: 报告一个错误或异常行为 / Report a bug
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 提交前请先搜索已有 Issue，并去掉账号、代理密码和 IP 等敏感信息。 / Please search existing issues first and remove account names, proxy credentials and IPs.
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本 / App version
+      description: 设置 → 通用 → 软件更新 / Settings → General
+      placeholder: "2026.11.22.1"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows 版本 / Windows version
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+  - type: input
+    id: kernel
+    attributes:
+      label: 内核 / Kernel
+      placeholder: "Chrome 147 / Clearcote 149"
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果与实际结果 / Expected vs actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图 / Logs or screenshots
+      description: 设置 → 运行日志 / Settings → Logs
+      render: text
