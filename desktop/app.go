@@ -250,15 +250,6 @@ func (a *App) ForceQuit() {
 	}
 }
 
-// beforeClose 拦截窗口关闭, 交给前端弹确认框; ForceQuit 之后直接放行。
-func (a *App) beforeClose(ctx context.Context) bool {
-	if a.forceQuit {
-		return false
-	}
-	runtime.EventsEmit(ctx, "app:request-close")
-	return true
-}
-
 // ---- 实例占用的 Xray 桥接 ----
 
 func (a *App) bindProfileXrayBridge(profileID, key string) {

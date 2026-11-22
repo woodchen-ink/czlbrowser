@@ -23,6 +23,8 @@ type SQLiteConfig struct {
 type AppConfig struct {
 	Name   string       `yaml:"name"` // 窗口标题
 	Window WindowConfig `yaml:"window"`
+	// CloseAction 点窗口关闭按钮时: tray 最小化到托盘 (默认, 空值同此), quit 退出, ask 每次询问
+	CloseAction string `yaml:"close_action"`
 }
 
 type WindowConfig struct {

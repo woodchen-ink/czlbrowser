@@ -250,6 +250,10 @@ export function GetBrowserSettings() {
   return window['go']['main']['App']['GetBrowserSettings']();
 }
 
+export function GetCloseAction() {
+  return window['go']['main']['App']['GetCloseAction']();
+}
+
 export function ListGroups() {
   return window['go']['main']['App']['ListGroups']();
 }
@@ -340,6 +344,10 @@ export function SaveBrowserProxies(arg1) {
 
 export function SaveBrowserSettings(arg1) {
   return window['go']['main']['App']['SaveBrowserSettings'](arg1);
+}
+
+export function SetCloseAction(arg1) {
+  return window['go']['main']['App']['SetCloseAction'](arg1);
 }
 
 export function SetLayout(arg1, arg2, arg3) {

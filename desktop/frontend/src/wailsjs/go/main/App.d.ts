@@ -134,6 +134,8 @@ export function GetAppLogs():Promise<Array<logger.Entry>>;
 
 export function GetBrowserSettings():Promise<browser.Settings>;
 
+export function GetCloseAction():Promise<string>;
+
 export function ListGroups():Promise<Array<browser.GroupWithCount>>;
 
 export function MoveInstancesToGroup(arg1:Array<string>,arg2:string):Promise<void>;
@@ -179,6 +181,8 @@ export function ReloadConfig():Promise<void>;
 export function SaveBrowserProxies(arg1:Array<config.BrowserProxy>):Promise<void>;
 
 export function SaveBrowserSettings(arg1:browser.Settings):Promise<void>;
+
+export function SetCloseAction(arg1:string):Promise<void>;
 
 export function SetLayout(arg1:boolean,arg2:string,arg3:string):Promise<void>;
 

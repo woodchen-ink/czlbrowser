@@ -1,24 +1,41 @@
 import { useState } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { ForceQuit } from '../../wailsjs/go/main/App'
+import { ForceQuit, SetCloseAction } from '../../wailsjs/go/main/App'
 import { WindowHide } from '../../wailsjs/runtime/runtime'
 import { Button, Modal } from '../components'
 import { useBackupStore } from '../../store/backupStore'
 import { useEvents } from '../hooks/useRuntimeEvents'
 
-/** 点窗口关闭时后端发 app:request-close, 这里让用户选择最小化到托盘或退出 (加载备份中会特别提醒)。 */
+/**
+ * 关闭行为设为「每次询问」, 或正在加载备份时, 后端发 app:request-close, 这里让用户选择最小化到托盘或退出。
+ * 勾选「记住」后写回设置, 以后不再询问 (设置 → 通用 可改回)。
+ */
 export function CloseConfirmModal() {
   const [open, setOpen] = useState(false)
+  const [remember, setRemember] = useState(false)
   const run = useBackupStore((s) => s.importing)
   const importing = run !== null
-  useEvents({ 'app:request-close': () => setOpen(true) }, [])
+  useEvents(
+    {
+      'app:request-close': () => {
+        setRemember(false)
+        setOpen(true)
+      },
+    },
+    [],
+  )
+
+  // 加载备份时的确认只针对这一次, 不记住
+  const keep = (action: 'tray' | 'quit') => (remember && !importing ? SetCloseAction(action).catch(() => undefined) : Promise.resolve())
 
   const quit = async () => {
     setOpen(false)
+    await keep('quit')
     await ForceQuit()
   }
-  const hide = () => {
+  const hide = async () => {
     setOpen(false)
+    await keep('tray')
     WindowHide()
   }
 
@@ -50,6 +67,12 @@ export function CloseConfirmModal() {
             </>
           )}
         </p>
+        {!importing && (
+          <label className="-mt-2 mb-4 flex cursor-pointer select-none items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-button-primary)]" />
+            记住我的选择, 不再询问
+          </label>
+        )}
         <div className="flex w-full gap-3">
           <Button variant="secondary" className="flex-1" onClick={importing ? () => setOpen(false) : hide}>
             {importing ? '继续加载' : '最小化到托盘'}
