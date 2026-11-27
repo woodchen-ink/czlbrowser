@@ -34,6 +34,28 @@
     cursor: not-allowed;
   }
 
+  /*
+   * 客户端壳内的文字选择 (data-app-shell 由 shared/appShell.ts 打上): 界面不可选, 内容区可选。
+   * 全部包在 :where() 里, 权重为 0, 组件上的 select-text / select-none 等工具类可覆盖; 规则之间按书写顺序生效。
+   * 同时写 -webkit- 前缀, 输入框单独恢复可选。新增内容区挂 data-selectable。
+   */
+  :where(html[data-app-shell]) body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  :where(html[data-app-shell]) :where(main, [role='dialog'], [role='status'], [data-selectable], [data-select-block], pre, code) {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  :where(html[data-app-shell]) :where(button, [role='button'], [role='tab'], [role='menuitem'], [role='option'], [role='switch'], label, select) {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  :where(html[data-app-shell]) :where(input, textarea, [contenteditable]:not([contenteditable='false'])) {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
   /* 细滚动条, 不抢内容 */
   ::-webkit-scrollbar {
     width: 6px;

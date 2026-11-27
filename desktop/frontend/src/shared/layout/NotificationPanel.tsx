@@ -21,7 +21,7 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
   const unread = notifications.filter((n) => !n.read).length
 
   return (
-    <div className="absolute left-full bottom-0 ml-2 w-80 bg-[var(--color-bg-elevated)] border border-[var(--color-border-default)] rounded-lg shadow-[var(--shadow-lg)] overflow-hidden z-50 animate-fade-in">
+    <div data-selectable className="absolute left-full bottom-0 ml-2 w-80 bg-[var(--color-bg-elevated)] border border-[var(--color-border-default)] rounded-lg shadow-[var(--shadow-lg)] overflow-hidden z-50 animate-fade-in">
       <div className="h-10 px-3 border-b border-[var(--color-border-muted)] flex items-center gap-2">
         <span className="text-sm font-medium text-[var(--color-text-primary)]">通知</span>
         {unread > 0 && <span className="text-xs text-[var(--color-text-muted)] tabular-nums">{unread} 条未读</span>}

@@ -52,7 +52,7 @@ export function RecoveryCodeModal({ code, onDone }: { code: string; onDone: () =
             云端数据用只有你知道的密钥加密，CZL 看不到，也无法帮你找回。换电脑或重装后，需要这个恢复码（或一台已登录的电脑）才能解开数据。
           </p>
         </div>
-        <div className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-muted)] px-4 py-3 text-center font-mono text-base tracking-wider text-[var(--color-text-primary)] select-all break-all">
+        <div data-select-block className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-muted)] px-4 py-3 text-center font-mono text-base tracking-wider text-[var(--color-text-primary)] select-all break-all">
           {code}
         </div>
         <div className="flex gap-2">

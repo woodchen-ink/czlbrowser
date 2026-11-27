@@ -99,7 +99,7 @@ export function LogsSection() {
         </span>
       </div>
 
-      <div ref={boxRef} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] font-mono text-xs">
+      <div ref={boxRef} data-select-block className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] font-mono text-xs">
         {shown.length === 0 ? (
           <div className="py-16 text-center font-sans text-sm text-[var(--color-text-muted)]">没有日志</div>
         ) : (

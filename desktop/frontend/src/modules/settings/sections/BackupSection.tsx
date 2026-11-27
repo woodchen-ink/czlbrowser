@@ -162,7 +162,7 @@ export function BackupSection() {
             </div>
             <Progress percent={exportState.progress} size="sm" status={statusOf(exportState)} />
             {log.length > 0 && (
-              <div ref={logRef} className="max-h-32 space-y-0.5 overflow-y-auto rounded-md bg-[var(--color-bg-subtle)] px-2 py-1.5 font-mono text-[11px] leading-5">
+              <div ref={logRef} data-select-block className="max-h-32 space-y-0.5 overflow-y-auto rounded-md bg-[var(--color-bg-subtle)] px-2 py-1.5 font-mono text-[11px] leading-5">
                 {log.map((l) => (
                   <div key={l.id} className={l.error ? 'text-[var(--color-error)]' : 'text-[var(--color-text-secondary)]'}>
                     <span className="mr-2 text-[var(--color-text-muted)]">{l.time}</span>

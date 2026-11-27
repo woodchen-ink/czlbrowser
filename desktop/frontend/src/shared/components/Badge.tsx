@@ -26,7 +26,7 @@ interface BadgeProps {
 
 export function Badge({ variant = 'default', size = 'md', dot = false, dotClassName = 'w-1.5 h-1.5', className, children }: BadgeProps) {
   return (
-    <span className={clsx('inline-flex items-center gap-1.5 rounded-full font-medium', tone[variant].chip, pad[size], className)}>
+    <span className={clsx('inline-flex select-none items-center gap-1.5 rounded-full font-medium', tone[variant].chip, pad[size], className)}>
       {dot && <span className={clsx('rounded-full', dotClassName, tone[variant].dot)} />}
       {children}
     </span>
